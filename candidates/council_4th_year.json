@@ -1,0 +1,61 @@
+{
+  "race_id": "council_4th_year",
+  "race_name": "4th Year Student Council",
+  "eligible_suffixes": ["_ug2023"],
+  "max_votes": 4,
+  "nota_ref_id": 999,
+  "candidates": [
+    {
+      "id": 33,
+      "name": "Arnav Gupta",
+      "affiliation": "Horizon",
+      "year": "UG2023",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "AG",
+      "is_nota": false
+    },
+    {
+      "id": 34,
+      "name": "Ayushi Choudhary",
+      "affiliation": "Horizon",
+      "year": "UG2023",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "AC",
+      "is_nota": false
+    },
+    {
+      "id": 35,
+      "name": "Teesha Aurora",
+      "affiliation": "Horizon",
+      "year": "UG2023",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "TA",
+      "is_nota": false
+    },
+
+    {
+      "id": 36,
+      "name": "Sulagna Moitra",
+      "affiliation": "United Students' Front",
+      "year": "UG2023",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "SM",
+      "is_nota": false
+    },
+ 
+    {
+      "id": 999,
+      "name": "None of the Above",
+      "affiliation": "",
+      "year": "",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "—",
+      "is_nota": true
+    }
+  ]
+}

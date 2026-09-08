@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AUEC · Student Elections 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --ink:#0e0e0f;--paper:#f4f1eb;--cream:#ece8de;--gold:#b8902a;--gold2:#d4a843;
+  --rust:#8b3a2a;--muted:#6b6760;--border:#ccc8be;--green:#2a6b4a;--r:4px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Mono',monospace;background:var(--paper);color:var(--ink);min-height:100vh;display:flex;flex-direction:column}
+header{border-bottom:2px solid var(--ink);padding:16px 40px;display:flex;align-items:center;gap:20px;background:var(--paper);position:sticky;top:0;z-index:100}
+.logo{font-family:'Playfair Display',serif;font-size:21px;font-weight:700;letter-spacing:-.5px}
+.logo span{color:var(--gold)}
+.tagline{font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.hright{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.hbtn{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:6px 13px;border:1px solid var(--border);background:transparent;cursor:pointer;color:var(--muted);transition:all .15s;border-radius:var(--r)}
+.hbtn:hover{border-color:var(--ink);color:var(--ink)}.hbtn.active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.role-badge{font-size:9px;padding:3px 8px;border-radius:2px;letter-spacing:.08em;text-transform:uppercase;background:var(--cream);border:1px solid var(--border);color:var(--muted)}
+.role-badge.admin{background:#fef3cd;border-color:var(--gold);color:var(--gold)}
+main{flex:1;max-width:1100px;margin:0 auto;width:100%;padding:48px 40px;display:grid;grid-template-columns:1fr 320px;gap:40px}
+@media(max-width:820px){main{grid-template-columns:1fr;padding:24px 20px}header{padding:14px 20px}}
+.panel{display:none}.panel.active{display:block;animation:fadeUp .22s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.steps{display:flex;margin-bottom:32px;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;width:fit-content}
+.step{font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:7px 14px;color:var(--muted);border-right:1px solid var(--border);background:var(--cream)}
+.step:last-child{border-right:none}.step.done{background:var(--ink);color:var(--paper)}.step.now{background:var(--gold);color:var(--paper);font-weight:500}.step.success{background:var(--green);color:var(--paper)}
+.h1{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;line-height:1.1;margin-bottom:8px;letter-spacing:-.4px}
+.sub{font-size:11px;color:var(--muted);margin-bottom:28px;line-height:1.65;max-width:440px}
+.field{margin-bottom:18px}
+label{display:block;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+input[type=text]{width:100%;max-width:400px;font-family:'DM Mono',monospace;font-size:13px;padding:11px 13px;border:1px solid var(--border);background:var(--paper);color:var(--ink);border-radius:var(--r);outline:none;transition:border-color .15s}
+input:focus{border-color:var(--ink)}
+.btn{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.07em;text-transform:uppercase;padding:12px 26px;border:none;cursor:pointer;border-radius:var(--r);transition:all .15s;display:inline-flex;align-items:center;gap:7px}
+.btn-primary{background:var(--ink);color:var(--paper)}.btn-primary:hover{background:#2a2a2b}.btn-primary:disabled{background:var(--border);cursor:not-allowed}
+.btn-gold{background:var(--gold);color:var(--paper)}.btn-gold:hover{background:var(--gold2)}
+.btn-outline{background:transparent;color:var(--ink);border:1px solid var(--border)}.btn-outline:hover{border-color:var(--ink)}
+
+/* race cards */
+.races{display:flex;flex-direction:column;gap:28px;max-width:580px}
+.race-card{border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.race-header{background:var(--cream);padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.race-title{font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:500}
+.race-meta{display:flex;align-items:center;gap:10px}
+.voted-badge{font-size:9px;padding:2px 8px;background:var(--green);color:#fff;border-radius:2px;letter-spacing:.06em;text-transform:uppercase}
+.voter-count{font-size:9px;color:var(--muted);padding:2px 8px;background:var(--paper);border:1px solid var(--border);border-radius:2px;letter-spacing:.04em}
+.max-votes-hint{font-size:10px;color:var(--muted);padding:8px 16px;border-bottom:1px solid var(--border);background:var(--paper)}
+.max-votes-hint strong{color:var(--ink)}
+
+/* candidate cards */
+.candidates-grid{padding:12px 16px;display:flex;flex-direction:column;gap:8px}
+.nota-divider{display:flex;align-items:center;gap:8px;padding:6px 0;color:var(--muted);font-size:9px;letter-spacing:.1em;text-transform:uppercase}
+.nota-divider::before,.nota-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.cand-card{border:1.5px solid var(--border);padding:12px 14px;cursor:pointer;border-radius:var(--r);background:var(--paper);transition:all .15s;display:flex;align-items:center;gap:12px;position:relative}
+.cand-card:hover:not(.disabled-card){border-color:var(--gold);background:#faf7f0}
+.cand-card.selected{border-color:var(--ink);background:var(--cream)}
+.cand-card.selected::after{content:'✓';position:absolute;right:12px;font-size:14px;color:var(--green)}
+.cand-card.disabled-card{opacity:.45;cursor:default}
+.cand-card.nota-card{border-style:dashed}
+.cand-card.nota-card:hover:not(.disabled-card){border-color:var(--rust);background:#fdf8f7}
+.cand-card.nota-card.selected{border-color:var(--rust);border-style:solid;background:#fdf0ed}
+.cand-card.nota-card.selected::after{color:var(--rust)}
+
+/* affiliation corner sash */
+/* candidate cards */
+.cand-card{
+  border:1.5px solid var(--border);
+  cursor:pointer;
+  border-radius:var(--r);
+  background:var(--paper);
+  transition:all .15s;
+  position:relative;
+  overflow:hidden;
+
+  display:grid;
+  grid-template-columns: 1fr 92px;
+  align-items:stretch;
+  padding:0;
+}
+
+.cand-card-main{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px 14px;
+  min-width:0;
+}
+
+.cand-party-strip{
+  width:100%;
+  height:100%;
+  min-height:72px;
+  border-left:1.5px solid var(--border);
+}
+
+.cand-party-strip.red{
+  background:#ae0000;
+}
+
+.cand-party-strip.blue{
+  background:#75ADBE;
+}
+
+.cand-card.no-party{
+  grid-template-columns: 1fr;
+}
+
+.cand-card.no-party .cand-party-strip{
+  display:none;
+}
+
+.cand-init{width:38px;height:38px;background:var(--ink);color:var(--paper);font-family:'Playfair Display',serif;font-size:14px;display:flex;align-items:center;justify-content:center;border-radius:2px;flex-shrink:0}
+.nota-card .cand-init{background:var(--muted);font-size:11px}
+.cand-name{font-family:'Playfair Display',serif;font-size:14px;font-weight:600}
+.cand-affil{font-size:10px;color:var(--gold);margin-top:1px}
+.cand-bio{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.5}
+
+.race-footer{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.selection-hint{font-size:10px;color:var(--muted);flex:1}
+.selection-hint.warn{color:var(--rust)}
+
+/* receipts */
+.receipt-box{border:2px solid var(--ink);padding:22px;max-width:480px;border-radius:var(--r);background:var(--paper);position:relative;overflow:hidden;margin-bottom:14px}
+.receipt-box::before{content:'RECEIPT';position:absolute;top:13px;right:14px;font-size:8px;letter-spacing:.2em;color:var(--border)}
+.receipt-stamp{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--green);border:2px solid var(--green);display:inline-block;padding:2px 10px;transform:rotate(-2deg);margin-bottom:12px}
+.receipt-race{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px}
+.receipt-hash{font-size:11px;word-break:break-all;color:var(--muted);line-height:1.6}
+.receipt-note{font-size:10px;color:var(--muted);margin-top:10px;border-top:1px dashed var(--border);padding-top:10px}
+.receipts-list{display:flex;flex-direction:column;gap:12px;margin-bottom:20px}
+
+/* alert */
+.alert{padding:11px 14px;border-radius:var(--r);font-size:11px;margin-bottom:16px;max-width:480px;display:none}
+.alert.show{display:block}
+.alert-error{background:#fdf0ed;border:1px solid #e8b4a8;color:var(--rust)}
+.alert-success{background:#edf6f1;border:1px solid #a8d4bb;color:var(--green)}
+
+/* verify */
+.verify-result{padding:14px 16px;border-radius:var(--r);max-width:480px;display:none;margin-top:14px;font-size:12px}
+.verify-result.found{background:#edf6f1;border:1px solid #a8d4bb;color:var(--green)}
+.verify-result.notfound{background:#fdf0ed;border:1px solid #e8b4a8;color:var(--rust)}
+
+/* sidebar */
+.sidebar-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;margin-bottom:18px}
+.result-row{margin-bottom:14px}
+.result-name{font-size:11px;display:flex;justify-content:space-between;margin-bottom:4px}
+.result-count{color:var(--muted);font-size:10px}
+.bar-track{height:5px;background:var(--cream);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;background:var(--ink);transition:width .8s cubic-bezier(.4,0,.2,1);width:0%}
+.bar-fill.gold{background:var(--gold)}.bar-fill.rust{background:var(--rust)}.bar-fill.nota{background:var(--muted)}
+.race-group{margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.race-group:last-child{border-bottom:none}
+.rg-title{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:8px}
+.rg-voters{font-size:9px;color:var(--muted);margin-bottom:10px}
+.total-line{font-size:10px;color:var(--muted);display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid var(--border);margin-top:4px}
+
+/* admin */
+.admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:680px;margin-bottom:28px}
+@media(max-width:600px){.admin-grid{grid-template-columns:1fr}}
+.stat-card{background:var(--cream);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px}
+.stat-num{font-family:'Playfair Display',serif;font-size:30px;font-weight:700}
+.stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-top:3px}
+
+.login-hero{display:flex;flex-direction:column;justify-content:center;min-height:60vh}
+.oauth-btn{display:inline-flex;align-items:center;gap:12px;padding:14px 22px;background:#fff;border:1.5px solid var(--border);border-radius:var(--r);font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;transition:all .15s;text-decoration:none;color:var(--ink);margin-top:8px;width:fit-content}
+.oauth-btn:hover{border-color:var(--ink);box-shadow:2px 2px 0 var(--ink)}
+.oauth-icon{width:18px;height:18px;flex-shrink:0}
+
+.spinner{width:12px;height:12px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:none}
+.spinner.dark{border-color:rgba(0,0,0,.15);border-top-color:var(--ink)}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+footer{border-top:1px solid var(--border);padding:14px 40px;font-size:9px;color:var(--muted);letter-spacing:.06em;display:flex;justify-content:space-between}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">AU<span>EC</span></div>
+  <div class="tagline">Ashoka University · Student Elections 2026</div>
+  <div class="hright" id="header-right"></div>
+</header>
+
+<main>
+<div>
+
+  <!-- LOGIN -->
+  <div class="panel active" id="panel-login">
+    <div class="login-hero">
+      <div class="h1">Vote in the<br/>2026 Student<br/>Elections.</div>
+      <div class="sub" style="margin-top:12px">Sign in with your Ashoka University Google account to access your ballot. Your votes are cryptographically anonymous — your identity is permanently unlinked from your ballot the moment you submit.</div>
+      <a href="/auth/login/google-oauth2/" class="oauth-btn">
+        <svg class="oauth-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Continue with Google (@ashoka.edu.in)
+      </a>
+      <div style="margin-top:14px;font-size:10px;color:var(--muted)">Only <strong>@ashoka.edu.in</strong> accounts are accepted.</div>
+    </div>
+  </div>
+
+  <!-- VOTE -->
+  <div class="panel" id="panel-vote">
+    <div class="steps">
+      <div class="step now">01 · Cast ballots</div>
+      <div class="step" id="step-receipt-tab">02 · Receipts</div>
+    </div>
+    <div class="h1">Your ballot.</div>
+    <div class="sub">Select your choices in each race and submit. For council races you may select up to the allowed number of candidates. Choosing NOTA cancels all other selections for that race.</div>
+    <div id="vote-alert" class="alert"></div>
+    <div class="races" id="races-container">
+      <div style="font-size:12px;color:var(--muted)">Loading races…</div>
+    </div>
+  </div>
+
+  <!-- RECEIPTS -->
+  <div class="panel" id="panel-receipts">
+    <div class="steps">
+      <div class="step done">01 · Cast ballots</div>
+      <div class="step success">02 · Receipts</div>
+    </div>
+    <div class="h1">All votes<br/>recorded.</div>
+    <div class="sub">Keep these receipts. Paste any hash into the Verify tab to confirm it appears in the public audit ledger.</div>
+    <div class="receipts-list" id="receipts-container"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-outline" onclick="switchNav('verify')">Verify receipts</button>
+      <button class="btn btn-outline" onclick="copyAllReceipts()">Copy all receipts</button>
+    </div>
+  </div>
+
+  <!-- VERIFY -->
+  <div class="panel" id="panel-verify">
+    <div class="h1">Verify<br/>a receipt.</div>
+    <div class="sub">Paste a receipt hash to confirm it exists in the public audit ledger. No login required.</div>
+    <div class="field">
+      <label>Receipt hash (64 hex characters)</label>
+      <input type="text" id="receipt-input" placeholder="e3b0c44298fc1c149afbf4c8996fb924…" maxlength="64" autocomplete="off"/>
+    </div>
+    <button class="btn btn-primary" onclick="doVerify()">
+      <span class="spinner" id="verify-spinner"></span>Verify
+    </button>
+    <div class="verify-result" id="verify-result"></div>
+  </div>
+
+  <!-- ADMIN -->
+  <div class="panel" id="panel-admin">
+    <div class="h1">Election<br/>dashboard.</div>
+    <div class="sub">Live tallies and unique voter participation. AUEC administrators only.</div>
+    <div class="admin-grid" id="admin-stats"></div>
+    <div id="admin-results"></div>
+  </div>
+
+</div>
+
+<!-- SIDEBAR -->
+<aside>
+  <div id="sidebar-content">
+    <div style="background:var(--cream);border:1px solid var(--border);padding:14px;border-radius:var(--r)">
+      <div style="font-family:'Playfair Display',serif;font-size:15px;font-weight:600;margin-bottom:6px">Participation</div>
+      <div style="font-size:11px;color:var(--muted)">Sign in to view.</div>
+    </div>
+  </div>
+</aside>
+</main>
+
+<footer>
+  <span>AUEC Secure Voting System · Ashoka University 2026</span>
+  <span>SHA-256 hash chain · Zero user-vote linkage</span>
+</footer>
+
+<script>
+const COLORS = ['','gold','rust','nota'];
+let voterData    = null;
+let sessionReceipts = []; // [{race_id, race_name, receipt}]
+// Per-race selections: { race_id: { ref_ids: Set, nota: bool } }
+const ballots = {};
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+async function boot() {
+  await fetchMe();
+  renderHeader();
+  if (!voterData) { showPanel('login'); return; }
+  if (voterData.role === 'auec_admin') {
+    showPanel('admin'); renderAdminNav();
+    loadAdminResults(); loadAdminSidebar();
+  } else {
+    showPanel('vote'); renderStudentNav();
+    loadRaces(); loadStudentSidebar();
+  }
+}
+
+async function fetchMe() {
+  try {
+    const r = await fetch('/api/me/', {credentials:'include'});
+    if (r.status === 401) { voterData = null; return; }
+    const d = await r.json();
+    if (d.ok) voterData = d;
+  } catch(e) { voterData = null; }
+}
+
+// ── Header ───────────────────────────────────────────────────────────────────
+function renderHeader() {
+  const el = document.getElementById('header-right');
+  if (!voterData) { el.innerHTML = `<a href="/auth/login/google-oauth2/" class="hbtn active">Sign in</a>`; return; }
+  const isAdmin = voterData.role === 'auec_admin';
+  el.innerHTML = `
+    <span class="role-badge ${isAdmin ? 'admin' : ''}">${isAdmin ? 'AUEC Admin' : 'Student'}</span>
+    <span style="font-size:10px;color:var(--muted)">${voterData.email}</span>
+    <a href="/logout/" class="hbtn">Sign out</a>`;
+}
+
+function renderStudentNav() {
+  const el = document.getElementById('header-right');
+  el.innerHTML = `
+    <button class="hbtn active" id="nav-vote" onclick="switchNav('vote')">Vote</button>
+    <button class="hbtn" id="nav-verify" onclick="switchNav('verify')">Verify</button>
+  ` + el.innerHTML;
+}
+
+function renderAdminNav() {
+  const el = document.getElementById('header-right');
+  el.innerHTML = `<button class="hbtn active" id="nav-admin">Results</button>` + el.innerHTML;
+}
+
+function switchNav(name) {
+  document.querySelectorAll('.hbtn[id^=nav-]').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('nav-'+name);
+  if (btn) btn.classList.add('active');
+  if (name === 'vote') {
+    if (voterData && voterData.remaining_races.length === 0 && sessionReceipts.length > 0) {
+      showPanel('receipts');
+    } else {
+      loadRaces(); showPanel('vote');
+    }
+  } else {
+    showPanel(name);
+  }
+}
+
+function showPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+}
+
+// ── Load races ────────────────────────────────────────────────────────────────
+async function loadRaces() {
+  const el = document.getElementById('races-container');
+  try {
+    const r = await fetch('/api/races/', {credentials:'include'});
+    const d = await r.json();
+    if (!d.ok) { el.innerHTML = `<div class="alert alert-error show">${d.error}</div>`; return; }
+    renderRaces(d.races);
+  } catch(e) { el.innerHTML = `<div style="font-size:11px;color:var(--rust)">Failed to load races.</div>`; }
+}
+
+function renderRaces(races) {
+  const el = document.getElementById('races-container');
+  if (!races.length) { el.innerHTML = `<div style="font-size:12px;color:var(--muted)">No races available for your account.</div>`; return; }
+
+  el.innerHTML = races.map(race => {
+    const isMulti   = race.max_votes > 1;
+    const hintText  = isMulti
+      ? `Select <strong>1 to ${race.max_votes}</strong> candidates, or choose NOTA`
+      : `Select <strong>1</strong> candidate, or choose NOTA`;
+
+    const candCards = race.candidates.map(c => candidateCardHTML(race, c, race.voted)).join('');
+    const notaCard  = race.nota ? notaCardHTML(race, race.nota, race.voted) : '';
+
+    return `
+    <div class="race-card" id="racecard-${race.race_id}" data-max-votes="${race.max_votes}">
+      <div class="race-header">
+        <span class="race-title">${race.race_name}</span>
+        <div class="race-meta">
+          <span class="voter-count" id="vc-${race.race_id}">
+            ${race.unique_voters} voter${race.unique_voters !== 1 ? 's' : ''} participated
+          </span>
+          ${race.voted ? '<span class="voted-badge">Voted</span>' : ''}
+        </div>
+      </div>
+      ${!race.voted ? `<div class="max-votes-hint">${hintText}</div>` : ''}
+      <div class="candidates-grid">
+        ${candCards}
+        ${notaCard ? `<div class="nota-divider">or</div>${notaCard}` : ''}
+      </div>
+      ${!race.voted ? `
+      <div class="race-footer">
+        <span class="selection-hint" id="hint-${race.race_id}">No selection</span>
+        <button class="btn btn-primary" id="vote-btn-${race.race_id}" onclick="castVote('${race.race_id}')" disabled>
+          <span class="spinner" id="spinner-${race.race_id}"></span>Submit
+        </button>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function candidateCardHTML(race, c, voted) {
+  const dis = voted ? 'disabled-card' : '';
+  const onclick = voted ? '' : `onclick="toggleCandidate('${race.race_id}',${c.candidate_ref_id},false)"`;
+
+  const aff = (c.affiliation || '').trim().toLowerCase();
+
+  let stripClass = '';
+  if (
+    aff.includes("united students' front") 
+  ) {
+    stripClass = 'red';
+  } else if (aff.includes('horizon')) {
+    stripClass = 'blue';
+  }
+
+  return `
+    <div class="cand-card ${dis} ${!stripClass ? 'no-party' : ''}" id="cand-${race.race_id}-${c.candidate_ref_id}" ${onclick}>
+      <div class="cand-card-main">
+        <div class="cand-init">${c.photo_initials || c.name[0]}</div>
+        <div>
+          <div class="cand-name">${c.name}</div>
+          <div class="cand-affil">${c.affiliation}</div>
+          <div class="cand-bio">${c.bio}</div>
+        </div>
+      </div>
+      <div class="cand-party-strip ${stripClass}"></div>
+    </div>`;
+}
+
+function notaCardHTML(race, nota, voted) {
+  const dis = voted ? 'disabled-card' : '';
+  const onclick = voted ? '' : `onclick="toggleCandidate('${race.race_id}',${nota.candidate_ref_id},true)"`;
+  return `
+    <div class="cand-card nota-card ${dis}" id="cand-${race.race_id}-${nota.candidate_ref_id}" ${onclick}>
+      <div class="cand-init">N/A</div>
+      <div>
+        <div class="cand-name">None of the Above (NOTA)</div>
+        <div class="cand-bio">${nota.bio}</div>
+      </div>
+    </div>`;
+}
+
+// ── Selection logic ────────────────────────────────────────────────────────────
+function toggleCandidate(race_id, ref_id, is_nota) {
+  if (!ballots[race_id]) ballots[race_id] = {ref_ids: new Set(), nota: false};
+  const b = ballots[race_id];
+
+  // Get race config
+  const headerEl = document.getElementById(`racecard-${race_id}`);
+  const hintEl   = document.getElementById(`hint-${race_id}`);
+  const maxVotes = parseInt(headerEl.dataset.maxVotes || '1');
+
+  if (is_nota) {
+    // NOTA toggle — clears all regular selections
+    if (b.nota) {
+      b.nota = false;
+      document.getElementById(`cand-${race_id}-${ref_id}`).classList.remove('selected');
+    } else {
+      // Deselect all regular candidates first
+      b.ref_ids.forEach(id => {
+        document.getElementById(`cand-${race_id}-${id}`)?.classList.remove('selected');
+      });
+      b.ref_ids.clear();
+      b.nota = true;
+      document.getElementById(`cand-${race_id}-${ref_id}`).classList.add('selected');
+    }
+  } else {
+    // Regular candidate — clears NOTA if active
+    if (b.nota) {
+      b.nota = false;
+      // find nota card id and deselect
+      const notaCard = headerEl.querySelector('.nota-card');
+      if (notaCard) notaCard.classList.remove('selected');
+    }
+
+    const cardEl = document.getElementById(`cand-${race_id}-${ref_id}`);
+    if (b.ref_ids.has(ref_id)) {
+      b.ref_ids.delete(ref_id);
+      cardEl.classList.remove('selected');
+    } else {
+      if (b.ref_ids.size >= maxVotes) {
+        // Deselect oldest (first in set)
+        const first = b.ref_ids.values().next().value;
+        b.ref_ids.delete(first);
+        document.getElementById(`cand-${race_id}-${first}`)?.classList.remove('selected');
+      }
+      b.ref_ids.add(ref_id);
+      cardEl.classList.add('selected');
+    }
+  }
+
+  // Update hint and button
+  const total = b.nota ? 1 : b.ref_ids.size;
+  const btn   = document.getElementById(`vote-btn-${race_id}`);
+  if (b.nota) {
+    hintEl.textContent = 'NOTA selected';
+    hintEl.className   = 'selection-hint';
+  } else if (b.ref_ids.size === 0) {
+    hintEl.textContent = 'No selection';
+    hintEl.className   = 'selection-hint';
+  } else {
+    hintEl.textContent = `${b.ref_ids.size} of ${maxVotes} selected`;
+    hintEl.className   = 'selection-hint';
+  }
+  if (btn) btn.disabled = total === 0;
+}
+
+// ── Cast vote ─────────────────────────────────────────────────────────────────
+async function castVote(race_id) {
+  const b = ballots[race_id];
+  if (!b) return;
+
+  const selected_ids = b.nota
+    ? [parseInt(document.querySelector(`#racecard-${race_id} .nota-card`).id.split('-').pop())]
+    : [...b.ref_ids];
+
+  if (!selected_ids.length) return;
+
+  const spinner = document.getElementById(`spinner-${race_id}`);
+  const btn     = document.getElementById(`vote-btn-${race_id}`);
+  spinner.style.display = 'inline-block';
+  btn.disabled = true;
+  hideAlert('vote-alert');
+
+  try {
+    // 1. Issue token
+    const tr = await fetch('/api/issue-token/', {
+      method:'POST', credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({race_id})
+    });
+    const td = await tr.json();
+    if (!td.ok) { showAlert('vote-alert', td.error); btn.disabled=false; spinner.style.display='none'; return; }
+
+    // 2. Submit ballot
+    const vr = await fetch('/api/vote/', {
+      method:'POST', credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({token: td.token, race_id, candidate_ref_ids: selected_ids})
+    });
+    const vd = await vr.json();
+    if (!vd.ok) { showAlert('vote-alert', vd.error); btn.disabled=false; spinner.style.display='none'; return; }
+
+    // 3. Store receipt
+    const raceName = document.querySelector(`#racecard-${race_id} .race-title`).textContent;
+    sessionReceipts.push({race_id, race_name: raceName, receipt: vd.receipt, is_nota: b.nota, selections: selected_ids.length});
+
+    // 4. Mark card as voted
+    const card = document.getElementById(`racecard-${race_id}`);
+    card.querySelector('.race-meta').insertAdjacentHTML('afterbegin','<span class="voted-badge">Voted</span>');
+    card.querySelector('.race-footer')?.remove();
+    card.querySelector('.max-votes-hint')?.remove();
+    card.querySelectorAll('.cand-card').forEach(c => { c.classList.add('disabled-card'); c.onclick=null; });
+
+    // 5. Refresh state
+    await fetchMe();
+    loadStudentSidebar();
+
+    // 6. Auto-advance if all done
+    if (voterData && voterData.remaining_races.length === 0) {
+      renderReceipts();
+      document.getElementById('step-receipt-tab').className = 'step now';
+      setTimeout(() => showPanel('receipts'), 600);
+    }
+  } catch(e) {
+    showAlert('vote-alert', 'Network error. Please try again.');
+    btn.disabled = false;
+  } finally {
+    spinner.style.display = 'none';
+  }
+}
+
+// ── Receipts ──────────────────────────────────────────────────────────────────
+function renderReceipts() {
+  document.getElementById('receipts-container').innerHTML = sessionReceipts.map(r => `
+    <div class="receipt-box">
+      <div class="receipt-stamp">VOTED</div>
+      <div class="receipt-race">${r.race_name}${r.is_nota ? ' · NOTA' : ` · ${r.selections} selection${r.selections!==1?'s':''}`}</div>
+      <div class="receipt-hash">${r.receipt}</div>
+      <div class="receipt-note">Use this hash in the Verify tab to confirm it appears in the ledger.</div>
+    </div>`).join('');
+}
+
+function copyAllReceipts() {
+  const text = sessionReceipts.map(r => `${r.race_name}:\n${r.receipt}`).join('\n\n');
+  navigator.clipboard.writeText(text);
+  event.target.textContent = 'Copied ✓';
+  setTimeout(()=>event.target.textContent='Copy all receipts', 2000);
+}
+
+// ── Verify ────────────────────────────────────────────────────────────────────
+async function doVerify() {
+  const receipt = document.getElementById('receipt-input').value.trim();
+  const el = document.getElementById('verify-result');
+  if (receipt.length !== 64) {
+    el.className='verify-result notfound'; el.style.display='block';
+    el.textContent='Receipt must be exactly 64 hex characters.'; return;
+  }
+  document.getElementById('verify-spinner').style.display='inline-block';
+  try {
+    const r = await fetch('/api/verify-receipt/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({receipt})});
+    const d = await r.json();
+    el.style.display='block';
+    if (d.found) { el.className='verify-result found'; el.textContent='✓ Receipt found in audit ledger. Your vote has been recorded.'; }
+    else { el.className='verify-result notfound'; el.textContent='✗ Receipt not found. Check the hash or contact AUEC.'; }
+  } catch(e) {
+    el.className='verify-result notfound'; el.style.display='block'; el.textContent='Network error.';
+  } finally { document.getElementById('verify-spinner').style.display='none'; }
+}
+
+// ── Student sidebar (ballot progress + live voter counts) ─────────────────────
+async function loadStudentSidebar() {
+  if (!voterData) return;
+  // Also refresh voter counts from races endpoint
+  try {
+    const r = await fetch('/api/races/', {credentials:'include'});
+    const d = await r.json();
+    if (!d.ok) return;
+    // Update voter count badges inline without full re-render
+    d.races.forEach(race => {
+      const el = document.getElementById(`vc-${race.race_id}`);
+      if (el) el.textContent = `${race.unique_voters} voter${race.unique_voters!==1?'s':''} participated`;
+    });
+    renderStudentSidebar(d.races);
+  } catch(e) {}
+}
+
+function renderStudentSidebar(races) {
+  const sb = document.getElementById('sidebar-content');
+  const total = voterData.eligible_races.length;
+  const voted = voterData.voted_races.length;
+  sb.innerHTML = `
+    <div class="sidebar-title">Your ballot</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:16px">${voted} of ${total} races completed</div>
+    ${races.map(r => {
+      const done = voterData.voted_races.some(v => v.race_id === r.race_id);
+      return `
+      <div style="padding:9px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+          <span>${r.race_name}</span>
+          <span style="color:${done?'var(--green)':'var(--muted)'}">${done?'✓':'—'}</span>
+        </div>
+        <div style="font-size:9px;color:var(--muted)">${r.unique_voters} voter${r.unique_voters!==1?'s':''} participated</div>
+      </div>`;
+    }).join('')}`;
+}
+
+// ── Admin sidebar ─────────────────────────────────────────────────────────────
+async function loadAdminSidebar() {
+  try {
+    const r = await fetch('/api/results/',{credentials:'include'});
+    const d = await r.json();
+    if (!d.ok) return;
+    const sb = document.getElementById('sidebar-content');
+    if (!d.results.length) { sb.innerHTML=`<div class="sidebar-title">Live tally</div><div style="font-size:11px;color:var(--muted)">No votes yet.</div>`; return; }
+    sb.innerHTML = `<div class="sidebar-title">Live tally</div>` +
+      d.results.map(race => {
+        const raceTotal = race.candidates.reduce((s,c)=>s+c.votes,0);
+        return `<div class="race-group">
+          <div class="rg-title">${race.race_name}</div>
+          <div class="rg-voters">${race.unique_voters} voter${race.unique_voters!==1?'s':''} participated</div>
+          ${race.candidates.map((c,i)=>`
+            <div class="result-row">
+              <div class="result-name"><span>${c.is_nota?'NOTA':c.name}</span><span class="result-count">${c.votes} · ${raceTotal?Math.round(c.votes/raceTotal*100):0}%</span></div>
+              <div class="bar-track"><div class="bar-fill ${c.is_nota?'nota':COLORS[i%3]}" style="width:${raceTotal?c.votes/raceTotal*100:0}%"></div></div>
+            </div>`).join('')}
+          <div class="total-line"><span>Ballots cast</span><span>${raceTotal}</span></div>
+        </div>`;
+      }).join('');
+  } catch(e) {}
+}
+
+// ── Admin full results ────────────────────────────────────────────────────────
+async function loadAdminResults() {
+  try {
+    const r = await fetch('/api/results/',{credentials:'include'});
+    const d = await r.json();
+    if (!d.ok) { document.getElementById('admin-results').innerHTML=`<div class="alert alert-error show">${d.error}</div>`; return; }
+    const totalVotes = d.results.reduce((s,race)=>s+race.candidates.reduce((a,c)=>a+c.votes,0),0);
+    const totalVoters = d.results.reduce((s,race)=>Math.max(s,race.unique_voters),0);
+    document.getElementById('admin-stats').innerHTML = `
+      <div class="stat-card"><div class="stat-num">${totalVotes}</div><div class="stat-label">Total vote selections</div></div>
+      <div class="stat-card"><div class="stat-num">${d.results.reduce((s,r)=>s+r.unique_voters,0)}</div><div class="stat-label">Unique voter participations</div></div>
+      <div class="stat-card"><div class="stat-num">${d.results.length}</div><div class="stat-label">Active races</div></div>
+    `;
+    const el = document.getElementById('admin-results');
+    if (!d.results.length) { el.innerHTML=`<div style="font-size:11px;color:var(--muted)">No votes yet.</div>`; return; }
+    el.innerHTML = d.results.map(race => {
+      const raceTotal = race.candidates.reduce((s,c)=>s+c.votes,0);
+      return `<div style="margin-bottom:32px;max-width:600px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">${race.race_name}</div>
+          <div style="font-size:10px;color:var(--muted)">${race.unique_voters} voter${race.unique_voters!==1?'s':''} participated</div>
+        </div>
+        ${race.candidates.map((c,i)=>`
+          <div style="margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:13px">
+              <span style="font-family:'Playfair Display',serif;${c.is_nota?'color:var(--muted)':''}">${c.is_nota?'None of the Above (NOTA)':c.name}</span>
+              <span style="color:var(--muted);font-size:10px">${c.votes} · ${raceTotal?Math.round(c.votes/raceTotal*100):0}%</span>
+            </div>
+            <div class="bar-track" style="height:7px"><div class="bar-fill ${c.is_nota?'nota':COLORS[i%3]}" style="width:${raceTotal?c.votes/raceTotal*100:0}%; height:7px"></div></div>
+            ${!c.is_nota?`<div style="font-size:9px;color:var(--muted);margin-top:2px">${c.affiliation}</div>`:''}
+          </div>`).join('')}
+        <div style="font-size:10px;color:var(--muted);border-top:1px solid var(--border);padding-top:8px">Total ballots: ${raceTotal}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {}
+}
+
+// ── Alerts ───────────────────────────────────────────────────────────────────
+function showAlert(id,msg,type='error'){const el=document.getElementById(id);el.textContent=msg;el.className=`alert alert-${type} show`}
+function hideAlert(id){document.getElementById(id).className='alert'}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+{% if voter %}boot();{% else %}showPanel('login');document.getElementById('header-right').innerHTML=`<a href="/auth/login/google-oauth2/" class="hbtn active">Sign in</a>`;{% endif %}
+</script>
+</body>
+</html>

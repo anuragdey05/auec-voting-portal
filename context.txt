@@ -1,0 +1,1819 @@
+### boot.py
+#!/usr/bin/env python
+"""
+  1. Checks .env exists and required keys are set
+  2. Checks PostgreSQL is reachable
+  3. Installs/verifies pip dependencies
+  4. Runs migrations
+  5. Seeds races and candidates from JSON files
+  6. Starts Django dev server on 127.0.0.1:8000
+"""
+
+import os
+import sys
+import subprocess
+import pathlib
+import time
+
+ROOT = pathlib.Path(__file__).resolve().parent
+ENV_FILE = ROOT / ".env"
+
+# â”€â”€ Colours â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+G = "\033[92m"; Y = "\033[93m"; R = "\033[91m"; B = "\033[94m"; E = "\033[0m"
+def ok(msg):   print(f"  {G}âœ“{E}  {msg}")
+def warn(msg): print(f"  {Y}!{E}  {msg}")
+def err(msg):  print(f"  {R}âœ—{E}  {msg}"); sys.exit(1)
+def step(msg): print(f"\n{B}â–¶ {msg}{E}")
+
+print(f"\n{B}â•â• AUEC Election System â€” Boot â•â•{E}\n")
+
+# â”€â”€ 1. .env check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+step("Checking .env")
+if not ENV_FILE.exists():
+    err(".env not found. Copy .env and fill in your values.")
+
+from dotenv import load_dotenv
+load_dotenv(ENV_FILE)
+
+required_keys = [
+    "DJANGO_SECRET_KEY",
+    "GOOGLE_OAUTH2_CLIENT_ID",
+    "GOOGLE_OAUTH2_CLIENT_SECRET",
+]
+missing = [k for k in required_keys if not os.getenv(k) or os.getenv(k, "").startswith("replace")]
+if missing:
+    err(f"Missing or placeholder values in .env: {', '.join(missing)}\nEdit .env before booting.")
+ok(".env loaded and keys present")
+
+# â”€â”€ 2. Dependencies â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+step("Installing dependencies")
+req = ROOT / "requirements.txt"
+result = subprocess.run(
+    [sys.executable, "-m", "pip", "install", "-r", str(req), "-q"],
+    capture_output=True, text=True
+)
+if result.returncode != 0:
+    err(f"pip install failed:\n{result.stderr}")
+ok("Dependencies satisfied")
+
+# â”€â”€ 3. PostgreSQL reachability â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+step("Checking PostgreSQL connection")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "election.settings")
+sys.path.insert(0, str(ROOT))
+
+import django
+django.setup()
+
+from django.db import connection
+for attempt in range(1, 6):
+    try:
+        connection.ensure_connection()
+        ok(f"PostgreSQL connected ({os.getenv('DB_HOST','127.0.0.1')}:{os.getenv('DB_PORT','5432')})")
+        break
+    except Exception as e:
+        if attempt == 5:
+            err(f"Cannot reach PostgreSQL after 5 attempts: {e}\nCheck DB_* values in .env and that PostgreSQL is running.")
+        warn(f"Attempt {attempt}/5 failed, retrying in 2sâ€¦")
+        time.sleep(2)
+
+# â”€â”€ 4. Migrations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+step("Running migrations")
+result = subprocess.run(
+    [sys.executable, "manage.py", "migrate", "--run-syncdb"],
+    cwd=ROOT, capture_output=True, text=True
+)
+if result.returncode != 0:
+    # Print output for debugging, but only if there's an actual error
+    print(result.stdout[-2000:] if result.stdout else "")
+    err(f"Migration failed:\n{result.stderr[-1000:]}")
+ok("Migrations applied")
+
+# â”€â”€ 5. Seed races + candidates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+step("Seeding races and candidates")
+from voting.eligibility import seed_races_and_candidates
+try:
+    seed_races_and_candidates()
+    ok("Races and candidates seeded from JSON files")
+except Exception as e:
+    warn(f"Seeding warning (non-fatal): {e}")
+
+# â”€â”€ 6. Summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+from voting.models import Race, Candidate, Voter, Vote
+print(f"\n  Races:      {Race.objects.count()}")
+print(f"  Candidates: {Candidate.objects.count()}")
+print(f"  Voters:     {Voter.objects.count()} registered")
+print(f"  Votes:      {Vote.objects.count()} cast")
+
+admin_emails = list(
+    Voter.objects.filter(role="auec_admin").values_list("email", flat=True)
+)
+if admin_emails:
+    print(f"  Admins:     {', '.join(admin_emails)}")
+else:
+    print(f"\n  {Y}No AUEC admins yet.{E}")
+    print(f"  After first login, promote someone with:")
+    print(f"    python manage.py make_admin their@ashoka.edu.in")
+
+# â”€â”€ 7. Start server â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+print(f"\n{G}â•â• Starting server â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•{E}")
+print(f"  URL:  http://127.0.0.1:8000")
+print(f"  OAuth redirect: http://127.0.0.1:8000/auth/complete/google-oauth2/")
+print(f"  Stop: Ctrl+C\n")
+
+os.execv(sys.executable, [sys.executable, "manage.py", "runserver", "127.0.0.1:8000"])
+
+### candidates\council_2nd_year.json
+{
+  "race_id": "council_2nd_year",
+  "race_name": "2nd Year Student Council",
+  "max_votes": 4,
+  "nota_ref_id": 999,
+  "eligible_suffixes": ["_ug2025"],
+  "candidates": [
+    {
+      "id": 7,
+      "name": "Abrar Khan",
+      "affiliation": "Independent",
+      "year": "UG2025",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "AK",
+      "is_nota": false
+    },
+    {
+      "id": 8,
+      "name": "Parth Kanwa",
+      "affiliation": "Independent",
+      "year": "UG2025",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "PK",
+      "is_nota": false
+    },
+    {
+      "id": 9,
+      "name": "Shrey Agarwal",
+      "affiliation": "Independent",
+      "year": "UG2025",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "SA",
+      "is_nota": false
+    },
+    {
+      "id": 10,
+      "name": "Aditi Vadhavkar",
+      "affiliation": "Horizon",
+      "year": "UG2025",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "AV",
+      "is_nota": false
+    },
+    {
+      "id": 11,
+      "name": "Anika Kumar",
+      "affiliation": "Horizon",
+      "year": "UG2025",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "AK",
+      "is_nota": false
+    },
+    {
+      "id": 12,
+      "name": "Selam Sahile",
+      "affiliation": "Horizon",
+      "year": "UG2025",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "SS",
+      "is_nota": false
+    },
+    {
+      "id": 13,
+      "name": "Fathima Fida B",
+      "affiliation": "Horizon",
+      "year": "UG2025",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "FFB",
+      "is_nota": false
+    },
+    {
+      "id": 14,
+      "name": "Shatakshi Shahi",
+      "affiliation": "United Students' Front",
+      "year": "UG2025",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "SS",
+      "is_nota": false
+    },
+    {
+      "id": 999,
+      "name": "None of the Above",
+      "affiliation": "",
+      "year": "",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "â€”",
+      "is_nota": true
+    }
+  ]
+}
+
+### candidates\council_3rd_year.json
+{
+  "race_id": "council_3rd_year",
+  "race_name": "3rd Year Student Council",
+  "eligible_suffixes": ["_ug2024"],
+  "max_votes": 4,
+  "nota_ref_id": 999,
+  "candidates": [
+    {
+      "id": 15,
+      "name": "Shatakshi Shelly",
+      "affiliation": "Independent",
+      "year": "UG2024",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "SS",
+      "is_nota": false
+    },
+    {
+      "id": 16,
+      "name": "Aditya Deshkulkarni",
+      "affiliation": "Horizon",
+      "year": "UG2024",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "AD",
+      "is_nota": false
+    },
+    {
+      "id": 17,
+      "name": "Asewe Letro",
+      "affiliation": "Horizon",
+      "year": "UG2024",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "AL",
+      "is_nota": false
+    },
+    {
+      "id": 18,
+      "name": "Veda Samhita",
+      "affiliation": "United Students' Front",
+      "year": "UG2024",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "VS",
+      "is_nota": false
+    },
+    {
+      "id": 19,
+      "name": "Trisha Iyer",
+      "affiliation": "United Students' Front",
+      "year": "UG2024",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "TI",
+      "is_nota": false
+    },
+    {
+      "id": 20,
+      "name": "Avanish D",
+      "affiliation": "United Students' Front",
+      "year": "UG2024",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "AD",
+      "is_nota": false
+    }
+    
+  ]
+}
+
+### candidates\council_4th_year.json
+{
+  "race_id": "council_4th_year",
+  "race_name": "4th Year Student Council",
+  "eligible_suffixes": ["_ug2023"],
+  "max_votes": 4,
+  "nota_ref_id": 999,
+  "candidates": [
+    {
+      "id": 21,
+      "name": "Arnav Gupta",
+      "affiliation": "Horizon",
+      "year": "UG2023",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "AG",
+      "is_nota": false
+    },
+    {
+      "id": 22,
+      "name": "Ayushi Choudhary",
+      "affiliation": "Horizon",
+      "year": "UG2023",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "AC",
+      "is_nota": false
+    },
+    {
+      "id": 23,
+      "name": "Teesha Aurora",
+      "affiliation": "Horizon",
+      "year": "UG2023",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "TA",
+      "is_nota": false
+    },
+    {
+      "id": 24,
+      "name": "Sulagna Moitra",
+      "affiliation": "United Students' Front",
+      "year": "UG2023",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "SM",
+      "is_nota": false
+    },
+    {
+      "id": 999,
+      "name": "None of the Above",
+      "affiliation": "",
+      "year": "",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "â€”",
+      "is_nota": true
+    }
+  ]
+}
+
+### candidates\gensec.json
+{
+  "race_id": "gensec",
+  "race_name": "General Secretary",
+  "max_votes": 1,
+  "nota_ref_id": 999,
+  "eligible_suffixes": ["all"],
+  "candidates": [
+    {
+      "id": 4,
+      "name": "Shatakshi Shelly",
+      "affiliation": "Independent",
+      "year": "UG2024",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "SS",
+      "is_nota": false
+    },
+    {
+      "id": 5,
+      "name": "Kriti Chhibber",
+      "affiliation": "Horizon",
+      "year": "UG2024",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "KC",
+      "is_nota": false
+    },
+    {
+      "id": 6,
+      "name": "Sulagna Moitra",
+      "affiliation": "United Students' Front",
+      "year": "UG2023",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "SM",
+      "is_nota": false
+    },
+    {
+      "id": 999,
+      "name": "None of the Above",
+      "affiliation": "",
+      "year": "",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "â€”",
+      "is_nota": true
+    }
+  ]
+}
+
+### candidates\president.json
+{
+  "race_id": "president",
+  "race_name": "Student Body President",
+  "max_votes": 1,
+  "nota_ref_id": 999,
+  "eligible_suffixes": ["all"],
+  "candidates": [
+    {
+      "id": 1,
+      "name": "Arash Lareb Syed",
+      "affiliation": "Independent",
+      "year": "UG2024",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "ALS",
+      "is_nota": false
+    },
+    {
+      "id": 2,
+      "name": "Ayush Solapurkar",
+      "affiliation": "Horizon",
+      "year": "UG2023",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "AS",
+      "is_nota": false
+    },
+    {
+      "id": 3,
+      "name": "Partho Protim Roy",
+      "affiliation": "United Students' Front",
+      "year": "UG2024",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "PPR",
+      "is_nota": false
+    },
+    {
+      "id": 999,
+      "name": "None of the Above",
+      "affiliation": "",
+      "year": "",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "â€”",
+      "is_nota": true
+    }
+  ]
+}
+
+### election\__init__.py
+
+
+### election\settings.py
+"""
+election/settings.py  â€”  Production-ready configuration.
+
+Sensitive values are read from .env via python-dotenv.
+Never hardcode secrets here.
+"""
+
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
+
+# â”€â”€ Core â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
+DEBUG = os.getenv("DEBUG", "False") == "True"
+ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+
+# â”€â”€ Apps â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+INSTALLED_APPS = [
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.auth",
+    "django.contrib.messages",
+    "social_django",
+    "voting",
+]
+
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "social_django.middleware.SocialAuthExceptionMiddleware",
+]
+
+ROOT_URLCONF = "election.urls"
+
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+                "social_django.context_processors.backends",
+                "social_django.context_processors.login_redirect",
+            ],
+        },
+    }
+]
+
+# â”€â”€ Database â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME", "election_db"),
+        "USER": os.getenv("DB_USER", "postgres"),
+        "PASSWORD": os.getenv("DB_PASSWORD", ""),
+        "HOST": os.getenv("DB_HOST", "127.0.0.1"),
+        "PORT": os.getenv("DB_PORT", "5432"),
+        "CONN_MAX_AGE": 60,
+    }
+}
+
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_AGE = 3600
+
+AUTHENTICATION_BACKENDS = [
+    "social_core.backends.google.GoogleOAuth2",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY    = os.environ["GOOGLE_OAUTH2_CLIENT_ID"]
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.environ["GOOGLE_OAUTH2_CLIENT_SECRET"]
+
+SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
+    "openid",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
+]
+
+ALLOWED_EMAIL_DOMAIN = os.getenv("ALLOWED_EMAIL_DOMAIN", "ashoka.edu.in")
+SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS = [ALLOWED_EMAIL_DOMAIN]
+
+SOCIAL_AUTH_PIPELINE = (
+    "social_core.pipeline.social_auth.social_details",
+    "social_core.pipeline.social_auth.social_uid",
+    "social_core.pipeline.social_auth.auth_allowed",
+    "social_core.pipeline.social_auth.social_user",
+    "social_core.pipeline.user.get_username",
+    "social_core.pipeline.user.create_user",
+    "social_core.pipeline.social_auth.associate_user",
+    "social_core.pipeline.social_auth.load_extra_data",
+    "social_core.pipeline.user.user_details",
+    "voting.pipeline.provision_voter",
+)
+
+SOCIAL_AUTH_LOGIN_REDIRECT_URL    = "/"
+SOCIAL_AUTH_LOGIN_ERROR_URL       = "/auth/error/"
+SOCIAL_AUTH_NEW_USER_REDIRECT_URL = "/"
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "standard": {"format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "standard"},
+    },
+    "loggers": {
+        "voting": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "social": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+    },
+}
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+USE_TZ = True
+TIME_ZONE = "UTC"
+
+### election\urls.py
+from django.urls import path, include
+from voting import views
+
+urlpatterns = [
+    path("",                         views.index_view,          name="index"),
+    path("logout/",                  views.logout_view,         name="logout"),
+    path("auth/error/",              views.auth_error_view,     name="auth_error"),
+    path("auth/",                    include("social_django.urls", namespace="social")),
+
+    # Voter-facing API
+    path("api/me/",                  views.me_view,             name="me"),
+    path("api/races/",               views.races_view,          name="races"),
+    path("api/issue-token/",         views.issue_token_view,    name="issue_token"),
+    path("api/vote/",                views.vote_view,           name="vote"),
+    path("api/verify-receipt/",      views.verify_receipt_view, name="verify_receipt"),
+
+    # AUEC admin API
+    path("api/results/",             views.results_view,        name="results"),
+    path("api/ledger/",              views.ledger_view,         name="ledger"),
+]
+
+### manage.py
+#!/usr/bin/env python
+import os
+import sys
+
+def main():
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "election.settings")
+    try:
+        from django.core.management import execute_from_command_line
+    except ImportError as exc:
+        raise ImportError("Couldn't import Django.") from exc
+    execute_from_command_line(sys.argv)
+
+if __name__ == "__main__":
+    main()
+
+### requirements.txt
+Django>=5.0,<6.0
+psycopg2-binary>=2.9
+social-auth-app-django>=5.4
+social-auth-core>=4.5
+python-dotenv>=1.0
+
+### scripts\get_context.py
+import pathlib
+
+exts = {".py", ".html", ".json", ".txt", ".md"}
+skip_dirs = {"venv", "__pycache__", "migrations", ".git"}
+
+root = pathlib.Path(".")
+parts = []
+
+for f in sorted(root.rglob("*")):
+    if any(s in f.parts for s in skip_dirs):
+        continue
+    if f.suffix not in exts:
+        continue
+    if f.stat().st_size > 30000:
+        continue
+
+    parts.append(f"### {f}\n{f.read_text(errors='ignore')}")
+
+pathlib.Path("context.txt").write_text("\n\n".join(parts), encoding="utf-8")
+print("Written to context.txt")
+
+### scripts\wipe_db.py
+from voting.models import Vote, VotingToken, Voter, Candidate, Race
+from django.contrib.auth.models import User
+from django.db import transaction
+with transaction.atomic():
+    Vote.objects.all().delete()
+    VotingToken.objects.all().delete()
+    Voter.objects.all().delete()
+    User.objects.all().delete()
+    Candidate.objects.all().delete()
+    Race.objects.all().delete()
+    
+print('Wiped.')
+
+
+### templates\auth_error.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>AUEC Â· Access Denied</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Mono:wght@400&display=swap" rel="stylesheet"/>
+<style>
+:root{--ink:#0e0e0f;--paper:#f4f1eb;--rust:#8b3a2a;--muted:#6b6760;--border:#ccc8be}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Mono',monospace;background:var(--paper);color:var(--ink);min-height:100vh;display:flex;align-items:center;justify-content:center}
+.box{max-width:420px;padding:48px;text-align:center}
+.icon{font-size:40px;margin-bottom:20px}
+h1{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;margin-bottom:10px}
+p{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:24px}
+a{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:11px 24px;background:var(--ink);color:var(--paper);text-decoration:none;border-radius:4px;display:inline-block}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="icon">ðŸ”’</div>
+  <h1>Access denied.</h1>
+  <p>{{ reason }}<br/><br/>Only <strong>@ashoka.edu.in</strong> Google accounts are permitted. If you believe this is an error, contact the AUEC.</p>
+  <a href="/">Return to home</a>
+</div>
+</body>
+</html>
+
+### voting\__init__.py
+
+
+### voting\access.py
+"""
+voting/access.py
+
+Reusable access-control decorators for views.
+
+Usage:
+    @require_voter          â€” must be logged in and have a Voter profile
+    @require_student        â€” must be a student (not admin)
+    @require_auec_admin     â€” must be AUEC admin
+"""
+
+import functools
+from django.shortcuts import redirect
+from django.http import JsonResponse
+
+
+def _get_voter(request):
+    """Return Voter profile for the logged-in user, or None."""
+    if not request.user.is_authenticated:
+        return None
+    try:
+        return request.user.voter_profile
+    except Exception:
+        return None
+
+
+def require_voter(view_fn):
+    """Require any authenticated voter (student or admin)."""
+    @functools.wraps(view_fn)
+    def wrapper(request, *args, **kwargs):
+        voter = _get_voter(request)
+        if voter is None:
+            if request.headers.get("Accept", "").startswith("application/json") or \
+               request.path.startswith("/api/"):
+                return JsonResponse({"ok": False, "error": "Authentication required."}, status=401)
+            return redirect("/auth/login/google-oauth2/")
+        request.voter = voter
+        return view_fn(request, *args, **kwargs)
+    return wrapper
+
+
+def require_student(view_fn):
+    """Require an authenticated student (not admin)."""
+    @functools.wraps(view_fn)
+    def wrapper(request, *args, **kwargs):
+        voter = _get_voter(request)
+        if voter is None:
+            if request.path.startswith("/api/"):
+                return JsonResponse({"ok": False, "error": "Authentication required."}, status=401)
+            return redirect("/auth/login/google-oauth2/")
+        if voter.is_admin:
+            if request.path.startswith("/api/"):
+                return JsonResponse({"ok": False, "error": "Admins cannot vote."}, status=403)
+            return redirect("/?error=admins_cannot_vote")
+        request.voter = voter
+        return view_fn(request, *args, **kwargs)
+    return wrapper
+
+
+def require_auec_admin(view_fn):
+    """Require AUEC admin role."""
+    @functools.wraps(view_fn)
+    def wrapper(request, *args, **kwargs):
+        voter = _get_voter(request)
+        if voter is None:
+            if request.path.startswith("/api/"):
+                return JsonResponse({"ok": False, "error": "Authentication required."}, status=401)
+            return redirect("/auth/login/google-oauth2/")
+        if not voter.is_admin:
+            if request.path.startswith("/api/"):
+                return JsonResponse({"ok": False, "error": "AUEC admin access required."}, status=403)
+            return redirect("/?error=forbidden")
+        request.voter = voter
+        return view_fn(request, *args, **kwargs)
+    return wrapper
+
+### voting\apps.py
+from django.apps import AppConfig
+
+class VotingConfig(AppConfig):
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "voting"
+
+### voting\eligibility.py
+"""
+voting/eligibility.py â€” email suffix â†’ race eligibility + candidate/race seeder.
+"""
+
+import json
+import logging
+from pathlib import Path
+
+logger = logging.getLogger("voting")
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+CANDIDATES_DIR = BASE_DIR / "candidates"
+
+SUFFIX_RACE_MAP: list[tuple[str, list[str]]] = [
+    ("_ug2023@ashoka.edu.in", ["president", "gensec", "council_4th_year"]),
+    ("_ug2024@ashoka.edu.in", ["president", "gensec", "council_3rd_year"]),
+    ("_ug2025@ashoka.edu.in", ["president", "gensec", "council_2nd_year"]),
+    ("_ug25@ashoka.edu.in", ["president", "gensec", "council_2nd_year", "council_3rd_year", "council_4th_year"]),
+    ("@ashoka.edu.in",        ["president", "gensec"]),
+    
+]
+
+CANDIDATE_FILES = [
+    "president.json",
+    "gensec.json",
+    "council_2nd_year.json",
+    "council_3rd_year.json",
+    "council_4th_year.json",
+]
+
+
+def get_eligible_race_ids(email: str) -> list[str]:
+    email = email.lower().strip()
+    for suffix, race_ids in SUFFIX_RACE_MAP:
+        if email.endswith(suffix):
+            return race_ids
+    return []
+
+
+def load_candidate_file(filename: str) -> dict:
+    path = CANDIDATES_DIR / filename
+    if not path.exists():
+        raise FileNotFoundError(f"Candidate file not found: {path}")
+    with open(path) as f:
+        return json.load(f)
+
+
+def seed_races_and_candidates():
+    """Idempotent: create/update Race and Candidate rows from all JSON files."""
+    from voting.models import Race, Candidate
+
+    for filename in CANDIDATE_FILES:
+        try:
+            data = load_candidate_file(filename)
+        except FileNotFoundError as e:
+            logger.error("seed: %s", e)
+            continue
+
+        race, created = Race.objects.update_or_create(
+            race_id=data["race_id"],
+            defaults={
+                "race_name":   data["race_name"],
+                "max_votes":   data.get("max_votes", 1),
+                "nota_ref_id": data.get("nota_ref_id", 999),
+            },
+        )
+        if created:
+            logger.info("Created race: %s (max_votes=%d)", race.race_name, race.max_votes)
+
+        for c in data["candidates"]:
+            _, created = Candidate.objects.update_or_create(
+                race=race,
+                candidate_ref_id=c["id"],
+                defaults={
+                    "name":           c.get("name", ""),
+                    "affiliation":    c.get("affiliation", ""),
+                    "year":           c.get("year", ""),
+                    "bio":            c.get("bio", ""),
+                    "manifesto_url":  c.get("manifesto_url", ""),
+                    "photo_initials": c.get("photo_initials", ""),
+                    "is_nota":        c.get("is_nota", False),
+                },
+            )
+            if created:
+                nota_tag = " [NOTA]" if c.get("is_nota") else ""
+                logger.info("  Created candidate: %s%s (%s)", c["name"], nota_tag, data["race_name"])
+
+    logger.info("Seeding complete.")
+
+### voting\management\__init__.py
+
+
+### voting\management\commands\__init__.py
+
+
+### voting\management\commands\export_ledger.py
+"""
+voting/management/commands/export_ledger.py
+
+Exports the full audit ledger to audit_ledger.json.
+Contains no user-identifiable fields.
+
+Run: python manage.py export_ledger [--output myfile.json]
+"""
+
+import json
+import pathlib
+from django.core.management.base import BaseCommand
+from voting.services import build_ledger
+
+
+class Command(BaseCommand):
+    help = "Export the audit ledger to a JSON file."
+
+    def add_arguments(self, parser):
+        parser.add_argument("--output", default="audit_ledger.json")
+
+    def handle(self, *args, **options):
+        ledger = build_ledger()
+        out_path = pathlib.Path(options["output"])
+        out_path.write_text(json.dumps(ledger, indent=2))
+        self.stdout.write(f"Exported {len(ledger)} votes â†’ {out_path.resolve()}")
+
+### voting\management\commands\make_admin.py
+"""
+voting/management/commands/make_admin.py
+
+Promote a voter to AUEC admin by email.
+
+Usage:
+    python manage.py make_admin admin@ashoka.edu.in
+"""
+
+from django.core.management.base import BaseCommand
+from voting.models import Voter
+
+
+class Command(BaseCommand):
+    help = "Promote a voter to AUEC admin role."
+
+    def add_arguments(self, parser):
+        parser.add_argument("email", type=str)
+
+    def handle(self, *args, **options):
+        email = options["email"].lower().strip()
+        try:
+            voter = Voter.objects.get(email=email)
+        except Voter.DoesNotExist:
+            self.stderr.write(
+                f"No voter found with email: {email}\n"
+                "They must log in via Google OAuth at least once before being promoted."
+            )
+            return
+        voter.role = Voter.ROLE_AUEC_ADMIN
+        voter.save(update_fields=["role"])
+        self.stdout.write(f"âœ“ {email} is now an AUEC admin.")
+
+### voting\management\commands\simulate_votes.py
+"""
+voting/management/commands/simulate_votes.py
+
+Creates 1000 voters, issues tokens, casts randomised votes,
+then exports the ledger and prints a final tally.
+
+Run: python manage.py simulate_votes [--voters 1000] [--reset]
+"""
+
+import random
+from django.core.management.base import BaseCommand
+from django.db import transaction
+
+from voting.models import Voter, Candidate, VotingToken, Vote
+from voting.services import issue_token, submit_vote_v2, VoteError, build_ledger
+
+import json, pathlib
+
+
+class Command(BaseCommand):
+    help = "Simulate N voters casting votes end-to-end."
+
+    def add_arguments(self, parser):
+        parser.add_argument("--voters", type=int, default=1000)
+        parser.add_argument(
+            "--reset",
+            action="store_true",
+            help="Wipe all votes/tokens/voters before running (for re-runs).",
+        )
+
+    def handle(self, *args, **options):
+        n = options["voters"]
+
+        if options["reset"]:
+            self.stdout.write("Resetting data...")
+            Vote.objects.all().delete()
+            VotingToken.objects.all().delete()
+            Voter.objects.all().delete()
+
+        candidates = list(Candidate.objects.all())
+        if not candidates:
+            self.stderr.write("No candidates found. Run: python manage.py shell < scripts/seed_candidates.py")
+            return
+
+        # â”€â”€ 1. Create voters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        self.stdout.write(f"Creating {n} voters...")
+        voters = []
+        existing_emails = set(Voter.objects.values_list("email", flat=True))
+        to_create = []
+        for i in range(1, n + 1):
+            email = f"student{i}@university.edu"
+            if email not in existing_emails:
+                to_create.append(Voter(email=email))
+        Voter.objects.bulk_create(to_create, ignore_conflicts=True)
+        voters = list(Voter.objects.filter(has_voted=False)[:n])
+        self.stdout.write(f"  {len(voters)} eligible voters ready.")
+
+        # â”€â”€ 2. Issue tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        self.stdout.write("Issuing tokens...")
+        token_map = {}   # voter_id â†’ raw_token
+        issued = 0
+        for voter in voters:
+            try:
+                raw = issue_token(voter)
+                token_map[voter.id] = raw
+                issued += 1
+            except ValueError:
+                pass   # already has token
+        self.stdout.write(f"  {issued} tokens issued.")
+
+        # â”€â”€ 3. Cast votes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        self.stdout.write("Casting votes...")
+        success = 0
+        errors = 0
+        for voter_id, raw_token in token_map.items():
+            candidate = random.choice(candidates)
+            try:
+                receipt = submit_vote_v2(raw_token, candidate.id)
+                success += 1
+            except VoteError as e:
+                errors += 1
+                self.stderr.write(f"  VoteError voter_id={voter_id}: {e}")
+
+        self.stdout.write(f"  {success} votes cast, {errors} errors.")
+
+        # â”€â”€ 4. Export ledger â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        ledger = build_ledger()
+        out_path = pathlib.Path("audit_ledger.json")
+        out_path.write_text(json.dumps(ledger, indent=2))
+        self.stdout.write(f"  Ledger exported â†’ {out_path.resolve()}")
+
+        # â”€â”€ 5. Print tally â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        tally: dict[str, int] = {}
+        for entry in ledger:
+            name = entry["candidate_name"]
+            tally[name] = tally.get(name, 0) + 1
+
+        self.stdout.write("\nâ”€â”€ Final Tally â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€")
+        for name, count in sorted(tally.items(), key=lambda x: -x[1]):
+            self.stdout.write(f"  {name:<30} {count:>5} votes")
+        self.stdout.write(f"  {'TOTAL':<30} {sum(tally.values()):>5}")
+        self.stdout.write("â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€\n")
+        self.stdout.write("Done. Run `python manage.py verify_audit` to check chain integrity.")
+
+### voting\management\commands\verify_audits.py
+"""
+voting/management/commands/verify_audit.py
+
+Loads audit_ledger.json and:
+  1. Recomputes the hash chain from GENESIS
+  2. Verifies every stored hash_chain matches
+  3. Verifies all receipts are unique
+  4. Prints the final tally
+
+Run: python manage.py verify_audit [--ledger audit_ledger.json]
+"""
+
+import json
+import pathlib
+import hashlib
+from django.core.management.base import BaseCommand
+
+
+def sha256(data: str) -> str:
+    return hashlib.sha256(data.encode("utf-8")).hexdigest()
+
+
+class Command(BaseCommand):
+    help = "Verify hash-chain integrity and receipt uniqueness of the exported ledger."
+
+    def add_arguments(self, parser):
+        parser.add_argument("--ledger", default="audit_ledger.json")
+
+    def handle(self, *args, **options):
+        path = pathlib.Path(options["ledger"])
+        if not path.exists():
+            self.stderr.write(f"Ledger file not found: {path}")
+            return
+
+        ledger = json.loads(path.read_text())
+        self.stdout.write(f"Loaded {len(ledger)} entries from {path}\n")
+
+        errors = []
+        prev_hash = "GENESIS"
+        receipts = []
+        tally: dict[str, int] = {}
+
+        for i, entry in enumerate(ledger):
+            # â”€â”€ Recompute chain hash â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            payload = (
+                f"{entry['token_hash']}|"
+                f"{entry['candidate_id']}|"
+                f"{entry['timestamp']}|"
+                f"{prev_hash}"
+            )
+            expected = sha256(payload)
+
+            if expected != entry["hash_chain"]:
+                errors.append(
+                    f"  [entry {i}] CHAIN MISMATCH: "
+                    f"expected {expected[:16]}â€¦ got {entry['hash_chain'][:16]}â€¦"
+                )
+
+            # â”€â”€ Recompute receipt â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            expected_receipt = sha256(f"{entry['token_hash']}|{entry['candidate_id']}")
+            if expected_receipt != entry["receipt"]:
+                errors.append(
+                    f"  [entry {i}] RECEIPT MISMATCH: "
+                    f"expected {expected_receipt[:16]}â€¦ got {entry['receipt'][:16]}â€¦"
+                )
+
+            receipts.append(entry["receipt"])
+            prev_hash = entry["hash_chain"]
+            name = entry["candidate_name"]
+            tally[name] = tally.get(name, 0) + 1
+
+        # â”€â”€ Check receipt uniqueness â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        if len(receipts) != len(set(receipts)):
+            errors.append("  DUPLICATE RECEIPTS DETECTED â€” possible double-vote.")
+
+        # â”€â”€ Report â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        if errors:
+            self.stdout.write("â”€â”€ AUDIT RESULT: FAIL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€")
+            for e in errors:
+                self.stdout.write(e)
+        else:
+            self.stdout.write("â”€â”€ AUDIT RESULT: PASS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€")
+            self.stdout.write(f"  Chain intact across {len(ledger)} votes.")
+            self.stdout.write(f"  All {len(receipts)} receipts unique.")
+
+        self.stdout.write("\nâ”€â”€ Tally â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€")
+        for name, count in sorted(tally.items(), key=lambda x: -x[1]):
+            self.stdout.write(f"  {name:<30} {count:>5} votes")
+        self.stdout.write(f"  {'TOTAL':<30} {sum(tally.values()):>5}")
+        self.stdout.write("â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€\n")
+
+### voting\models.py
+"""
+voting/models.py
+
+v3 changes:
+- Race.max_votes: max candidates selectable per race (1 for President/GenSec, 4 for councils)
+- Race.nota_ref_id: the candidate_ref_id that represents NOTA in this race
+- Vote unique constraint is now (token_hash, candidate) â€” allows multiple votes per token per race
+- VotingToken.ballot_count: how many individual vote rows have been cast with this token
+- NOTA exclusivity enforced in services.py (not at DB level â€” business logic)
+- Unique voter count derived from distinct token_hashes per race (privacy-preserving)
+"""
+
+from django.db import models
+from django.contrib.auth.models import User
+from django.utils import timezone
+
+
+class Race(models.Model):
+    race_id      = models.CharField(max_length=64, unique=True, db_index=True)
+    race_name    = models.CharField(max_length=255)
+    is_active    = models.BooleanField(default=True)
+    max_votes    = models.IntegerField(default=1)   # max candidates selectable (excl. NOTA)
+    nota_ref_id  = models.IntegerField(default=999) # candidate_ref_id reserved for NOTA
+
+    class Meta:
+        db_table = "races"
+
+    def __str__(self):
+        return self.race_name
+
+
+class Candidate(models.Model):
+    race             = models.ForeignKey(Race, on_delete=models.PROTECT, related_name="candidates")
+    candidate_ref_id = models.IntegerField(db_index=True)
+    name             = models.CharField(max_length=255)
+    affiliation      = models.CharField(max_length=255, blank=True)
+    year             = models.CharField(max_length=32, blank=True)
+    bio              = models.TextField(blank=True)
+    manifesto_url    = models.URLField(blank=True)
+    photo_initials   = models.CharField(max_length=4, blank=True)
+    is_nota          = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "candidates"
+        unique_together = [("race", "candidate_ref_id")]
+
+    def __str__(self):
+        return f"{self.name} ({self.race.race_name})"
+
+
+class Voter(models.Model):
+    ROLE_STUDENT    = "student"
+    ROLE_AUEC_ADMIN = "auec_admin"
+    ROLE_CHOICES = [
+        (ROLE_STUDENT,    "Student"),
+        (ROLE_AUEC_ADMIN, "AUEC Admin"),
+    ]
+
+    user            = models.OneToOneField(User, on_delete=models.CASCADE, related_name="voter_profile")
+    email           = models.EmailField(unique=True, db_index=True)
+    role            = models.CharField(max_length=20, choices=ROLE_CHOICES, default=ROLE_STUDENT)
+    eligible_races  = models.ManyToManyField(Race, related_name="eligible_voters", blank=True)
+    has_voted_races = models.ManyToManyField(Race, related_name="completed_voters", blank=True)
+    created_at      = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = "voters"
+
+    @property
+    def is_admin(self):
+        return self.role == self.ROLE_AUEC_ADMIN
+
+    def remaining_races(self):
+        voted_ids = self.has_voted_races.values_list("id", flat=True)
+        return self.eligible_races.filter(is_active=True).exclude(id__in=voted_ids)
+
+    def __str__(self):
+        return f"{self.email} [{self.role}]"
+
+
+class VotingToken(models.Model):
+    token_hash  = models.CharField(max_length=64, unique=True, db_index=True)
+    voter       = models.ForeignKey(
+        Voter,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="voting_tokens",
+        db_column="voter_id",
+    )
+    race        = models.ForeignKey(Race, on_delete=models.PROTECT, related_name="tokens")
+    used        = models.BooleanField(default=False)
+    ballot_count = models.IntegerField(default=0)  # votes cast with this token
+    issued_at   = models.DateTimeField(default=timezone.now)
+    used_at     = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "voting_tokens"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["voter", "race"],
+                condition=models.Q(used=False),
+                name="unique_active_token_per_voter_race",
+            )
+        ]
+
+    def __str__(self):
+        return f"Token:{self.token_hash[:12]}... race={self.race_id} used={self.used}"
+
+
+class Vote(models.Model):
+    """
+    One row per candidate selected. A multi-vote ballot produces multiple rows
+    sharing the same token_hash. NOTA produces exactly one row with is_nota=True.
+
+    Unique constraint: (token_hash, candidate) â€” one vote per candidate per token.
+    NOTA exclusivity (cannot coexist with other votes for same token+race) is
+    enforced in services.py inside the atomic transaction.
+
+    Unique voter count = COUNT(DISTINCT token_hash) per race â€” privacy-safe.
+    """
+    token_hash = models.CharField(max_length=64, db_index=True)
+    candidate  = models.ForeignKey(Candidate, on_delete=models.PROTECT, related_name="votes")
+    race       = models.ForeignKey(Race, on_delete=models.PROTECT, related_name="votes")
+    is_nota    = models.BooleanField(default=False)
+    timestamp  = models.DateTimeField(default=timezone.now)
+    hash_chain = models.CharField(max_length=64)
+
+    class Meta:
+        db_table = "votes"
+        constraints = [
+            # One vote per candidate per token (prevents double-voting same candidate)
+            models.UniqueConstraint(
+                fields=["token_hash", "candidate"],
+                name="unique_vote_per_token_candidate",
+            )
+        ]
+
+    def __str__(self):
+        nota = " [NOTA]" if self.is_nota else ""
+        return f"Vote:{self.hash_chain[:12]}...{nota} -> {self.candidate.name} [{self.race.race_name}]"
+
+### voting\pipeline.py
+"""
+voting/pipeline.py
+
+Custom social-auth pipeline step, runs after the Django User is created/found.
+
+Responsibilities:
+  1. Reject emails not from the allowed domain (defence-in-depth; the
+     WHITELISTED_DOMAINS setting already blocks at OAuth level).
+  2. Create or update the Voter profile linked to the Django User.
+  3. Assign eligible_races based on email suffix.
+  4. Preserve the 'auec_admin' role if already set (prevents demotion on re-login).
+"""
+
+import logging
+from django.conf import settings
+from social_core.exceptions import AuthForbidden
+
+from .models import Voter
+from .eligibility import get_eligible_race_ids
+
+logger = logging.getLogger("voting")
+
+
+def provision_voter(backend, user, response, *args, **kwargs):
+    """
+    Called by social-auth after user creation/login.
+    `user` is a Django auth.User instance.
+    """
+    email = (user.email or "").lower().strip()
+    allowed_domain = getattr(settings, "ALLOWED_EMAIL_DOMAIN", "ashoka.edu.in")
+
+    # â”€â”€ Domain guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    if not email.endswith(f"@{allowed_domain}"):
+        logger.warning("Blocked OAuth login from disallowed domain: %s", email)
+        raise AuthForbidden(backend)
+
+    # â”€â”€ Fetch or create Voter profile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    voter, created = Voter.objects.get_or_create(
+        user=user,
+        defaults={"email": email, "role": Voter.ROLE_STUDENT},
+    )
+
+    if not created:
+        # Update email in case it changed (unlikely but safe)
+        if voter.email != email:
+            voter.email = email
+            voter.save(update_fields=["email"])
+
+    # â”€â”€ Assign eligible races (always refresh in case mapping changes) â”€â”€â”€â”€â”€â”€â”€â”€
+    from voting.models import Race
+    race_ids = get_eligible_race_ids(email)
+    eligible = Race.objects.filter(race_id__in=race_ids, is_active=True)
+    voter.eligible_races.set(eligible)
+
+    action = "created" if created else "updated"
+    logger.info("Voter %s (%s). Role=%s. Eligible races=%s",
+                action, voter.id, voter.role, race_ids)
+
+### voting\services.py
+"""
+voting/services.py  v3
+
+Multi-vote + NOTA rules:
+- max_votes=1 races (President, GenSec): exactly 1 candidate OR NOTA.
+- max_votes=N races (councils): 1..N candidates OR NOTA (not both).
+- NOTA exclusivity: if any vote for a token+race is NOTA, no other votes allowed.
+- submit_ballot() accepts a list of candidate_ref_ids in one atomic call.
+  Each produces one Vote row. The token is marked used after all rows inserted.
+- Unique voter count = COUNT(DISTINCT token_hash) per race.
+"""
+
+import hashlib
+import secrets
+import logging
+from django.db import transaction, IntegrityError
+from django.utils import timezone
+
+from .models import Race, Candidate, Voter, VotingToken, Vote
+
+logger = logging.getLogger("voting")
+
+
+def sha256(data: str) -> str:
+    return hashlib.sha256(data.encode("utf-8")).hexdigest()
+
+
+def _get_previous_hash(race: Race) -> str:
+    last = Vote.objects.filter(race=race).order_by("-id").first()
+    return last.hash_chain if last else "GENESIS"
+
+
+def compute_hash_chain(token_hash, candidate_ref_id, race_id, timestamp_iso, prev_hash):
+    payload = f"{token_hash}|{candidate_ref_id}|{race_id}|{timestamp_iso}|{prev_hash}"
+    return sha256(payload)
+
+
+def compute_receipt(token_hash: str, race_id: str, candidate_ref_ids: list[int]) -> str:
+    """
+    Receipt covers the full ballot (all selected candidates) for a race.
+    Sorted so order doesn't matter.
+    """
+    ids_str = ",".join(str(i) for i in sorted(candidate_ref_ids))
+    return sha256(f"{token_hash}|{race_id}|{ids_str}")
+
+
+# â”€â”€ Token issuance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+def issue_token_for_race(voter: Voter, race: Race) -> str:
+    if not voter.eligible_races.filter(id=race.id).exists():
+        raise ValueError(f"Not eligible for: {race.race_name}")
+    if voter.has_voted_races.filter(id=race.id).exists():
+        raise ValueError(f"Already voted in: {race.race_name}")
+    existing = VotingToken.objects.filter(voter=voter, race=race, used=False).first()
+    if existing:
+        raise ValueError("Token already issued for this race.")
+
+    raw_token  = secrets.token_urlsafe(32)
+    token_hash = sha256(raw_token)
+    VotingToken.objects.create(token_hash=token_hash, voter=voter, race=race)
+    logger.info("Token issued. voter_id=%d race=%s", voter.id, race.race_id)
+    return raw_token
+
+
+class VoteError(Exception):
+    pass
+
+
+# â”€â”€ Ballot submission â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+def submit_ballot(raw_token: str, race_id: str, candidate_ref_ids: list[int]) -> str:
+    """
+    Submit a complete ballot for one race.
+
+    candidate_ref_ids: list of candidate_ref_id values selected by the voter.
+      - Must have 1..max_votes entries, OR exactly [nota_ref_id].
+      - If nota_ref_id is in the list, it must be the ONLY entry.
+
+    Returns receipt hash covering the full ballot.
+    All Vote rows inserted atomically; token marked used on commit.
+    """
+    if not candidate_ref_ids:
+        raise VoteError("No candidates selected.")
+
+    token_hash = sha256(raw_token)
+
+    with transaction.atomic():
+        # â”€â”€ Lock token row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        try:
+            token = (VotingToken.objects
+                     .select_for_update()
+                     .select_related("race")
+                     .get(token_hash=token_hash))
+        except VotingToken.DoesNotExist:
+            raise VoteError("Invalid token.")
+
+        if token.used:
+            raise VoteError("Token already used.")
+
+        if token.race.race_id != race_id:
+            raise VoteError("Token is not valid for this race.")
+
+        try:
+            race = Race.objects.get(race_id=race_id, is_active=True)
+        except Race.DoesNotExist:
+            raise VoteError("Race not found or not active.")
+
+        # â”€â”€ NOTA check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        is_nota_ballot = (len(candidate_ref_ids) == 1 and
+                          candidate_ref_ids[0] == race.nota_ref_id)
+
+        if not is_nota_ballot:
+            # Ensure NOTA is not mixed with real candidates
+            if race.nota_ref_id in candidate_ref_ids:
+                raise VoteError("NOTA cannot be combined with other candidates.")
+            if len(candidate_ref_ids) > race.max_votes:
+                raise VoteError(
+                    f"Too many candidates selected. Maximum for this race: {race.max_votes}."
+                )
+            if len(candidate_ref_ids) != len(set(candidate_ref_ids)):
+                raise VoteError("Duplicate candidates in selection.")
+
+        # â”€â”€ Resolve candidates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        candidates = []
+        for ref_id in candidate_ref_ids:
+            try:
+                candidates.append(Candidate.objects.get(race=race, candidate_ref_id=ref_id))
+            except Candidate.DoesNotExist:
+                raise VoteError(f"Candidate {ref_id} not found in race {race_id}.")
+
+        voter_id = token.voter_id   # capture before null
+        now      = timezone.now()
+
+        # â”€â”€ Insert one Vote row per candidate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        for candidate in candidates:
+            prev_hash  = _get_previous_hash(race)
+            chain_hash = compute_hash_chain(
+                token_hash, candidate.candidate_ref_id,
+                race.race_id, now.isoformat(), prev_hash,
+            )
+            try:
+                Vote.objects.create(
+                    token_hash=token_hash,
+                    candidate=candidate,
+                    race=race,
+                    is_nota=candidate.is_nota,
+                    timestamp=now,
+                    hash_chain=chain_hash,
+                )
+            except IntegrityError:
+                raise VoteError("Duplicate vote detected.")
+
+        # â”€â”€ Mark token used, privacy unlink â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        token.used         = True
+        token.used_at      = now
+        token.ballot_count = len(candidates)
+        token.voter        = None   # PRIVACY UNLINK
+        token.save(update_fields=["used", "used_at", "ballot_count", "voter"])
+
+        if voter_id:
+            Voter.objects.get(id=voter_id).has_voted_races.add(race)
+
+    logger.info("Ballot recorded. race=%s selections=%d nota=%s",
+                race_id, len(candidates), is_nota_ballot)
+    return compute_receipt(token_hash, race_id, candidate_ref_ids)
+
+
+# â”€â”€ Results + unique voter count â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+def get_results(race_id: str | None = None):
+    """
+    Returns tallies per race including unique_voters count.
+    unique_voters = COUNT(DISTINCT token_hash) â€” privacy-safe, no user data.
+    """
+    from django.db.models import Count
+
+    qs = Vote.objects.select_related("candidate", "race")
+    if race_id:
+        qs = qs.filter(race__race_id=race_id)
+
+    tally = (
+        qs.values(
+            "race__race_id", "race__race_name", "race__max_votes",
+            "candidate__candidate_ref_id", "candidate__name",
+            "candidate__affiliation", "candidate__is_nota",
+        )
+        .annotate(count=Count("id"))
+        .order_by("race__race_id", "candidate__is_nota", "-count")
+    )
+
+    # Unique voter count per race
+    unique_voters_qs = (
+        Vote.objects
+        .values("race__race_id")
+        .annotate(unique_voters=Count("token_hash", distinct=True))
+    )
+    unique_map = {row["race__race_id"]: row["unique_voters"] for row in unique_voters_qs}
+
+    races: dict = {}
+    for row in tally:
+        rid = row["race__race_id"]
+        if rid not in races:
+            races[rid] = {
+                "race_id":      rid,
+                "race_name":    row["race__race_name"],
+                "max_votes":    row["race__max_votes"],
+                "unique_voters": unique_map.get(rid, 0),
+                "candidates":   [],
+            }
+        races[rid]["candidates"].append({
+            "candidate_ref_id": row["candidate__candidate_ref_id"],
+            "name":        row["candidate__name"],
+            "affiliation": row["candidate__affiliation"],
+            "is_nota":     row["candidate__is_nota"],
+            "votes":       row["count"],
+        })
+
+    return list(races.values())
+
+
+# â”€â”€ Ledger + receipt â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+def build_ledger(race_id: str | None = None) -> list[dict]:
+    qs = Vote.objects.select_related("candidate", "race").order_by("id")
+    if race_id:
+        qs = qs.filter(race__race_id=race_id)
+    entries = []
+    for vote in qs:
+        entries.append({
+            "vote_id":           vote.id,
+            "race_id":           vote.race.race_id,
+            "race_name":         vote.race.race_name,
+            "candidate_ref_id":  vote.candidate.candidate_ref_id,
+            "candidate_name":    vote.candidate.name,
+            "is_nota":           vote.is_nota,
+            "token_hash":        vote.token_hash,
+            "timestamp":         vote.timestamp.isoformat(),
+            "hash_chain":        vote.hash_chain,
+        })
+    return entries
+
+
+def verify_receipt(receipt_hash: str) -> bool:
+    """
+    Verify receipt by recomputing for every distinct (token_hash, race) group.
+    Groups all vote rows for a token+race together as one ballot.
+    """
+    from django.db.models import Count
+    groups = (
+        Vote.objects
+        .values("token_hash", "race__race_id")
+        .annotate(n=Count("id"))
+    )
+    for group in groups:
+        th       = group["token_hash"]
+        rid      = group["race__race_id"]
+        ref_ids  = list(
+            Vote.objects
+            .filter(token_hash=th, race__race_id=rid)
+            .values_list("candidate__candidate_ref_id", flat=True)
+        )
+        if compute_receipt(th, rid, ref_ids) == receipt_hash:
+            return True
+    return False
+
+### voting\urls.py
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path("login/",          views.login_view,          name="login"),
+    path("issue-token/",    views.issue_token_view,    name="issue_token"),
+    path("vote/",           views.vote_view,            name="vote"),
+    path("verify-receipt/", views.verify_receipt_view, name="verify_receipt"),
+    path("results/",        views.results_view,         name="results"),
+]
+
+### voting\views.py
+"""
+voting/views.py  v3 â€” uses submit_ballot (multi-vote + NOTA)
+"""
+
+import json
+import logging
+from django.shortcuts import render, redirect
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth import logout
+
+from .models import Race
+from .services import (
+    VoteError, issue_token_for_race, submit_ballot,
+    verify_receipt, get_results, build_ledger,
+)
+from .access import require_voter, require_student, require_auec_admin
+
+logger = logging.getLogger("voting")
+
+
+def _json(request) -> dict:
+    try:
+        return json.loads(request.body)
+    except Exception:
+        return {}
+
+def _ok(data, status=200):  return JsonResponse({"ok": True,  **data}, status=status)
+def _err(msg,  status=400):  return JsonResponse({"ok": False, "error": msg}, status=status)
+
+
+# â”€â”€ Pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+def index_view(request):
+    voter = None
+    if request.user.is_authenticated:
+        try:
+            voter = request.user.voter_profile
+        except Exception:
+            pass
+    return render(request, "index.html", {"voter": voter})
+
+def auth_error_view(request):
+    reason = request.GET.get("message", "Authentication failed.")
+    return render(request, "auth_error.html", {"reason": reason})
+
+def logout_view(request):
+    logout(request)
+    return redirect("/")
+
+
+# â”€â”€ API: voter info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+@require_voter
+def me_view(request):
+    voter = request.voter
+    return _ok({
+        "email":           voter.email,
+        "role":            voter.role,
+        "eligible_races":  list(voter.eligible_races.values("race_id", "race_name")),
+        "voted_races":     list(voter.has_voted_races.values("race_id", "race_name")),
+        "remaining_races": list(voter.remaining_races().values("race_id", "race_name")),
+    })
+
+
+# â”€â”€ API: races + candidates (includes unique voter count) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+@require_student
+def races_view(request):
+    voter     = request.voter
+    races     = voter.eligible_races.filter(is_active=True).prefetch_related("candidates")
+    voted_ids = set(voter.has_voted_races.values_list("race_id", flat=True))
+
+    # Unique voter counts (public â€” count of distinct token_hashes, no user data)
+    from django.db.models import Count
+    uv_map = {
+        row["race__race_id"]: row["uv"]
+        for row in (
+            __import__("voting.models", fromlist=["Vote"])
+            .Vote.objects
+            .values("race__race_id")
+            .annotate(uv=Count("token_hash", distinct=True))
+        )
+    }
+
+    data = []
+    for race in races:
+        regular = [c for c in race.candidates.all() if not c.is_nota]
+        nota    = [c for c in race.candidates.all() if c.is_nota]
+        def cand_dict(c):
+            return {
+                "candidate_ref_id": c.candidate_ref_id,
+                "name":             c.name,
+                "affiliation":      c.affiliation,
+                "year":             c.year,
+                "bio":              c.bio,
+                "photo_initials":   c.photo_initials,
+                "is_nota":          c.is_nota,
+            }
+        data.append({
+            "race_id":       race.race_id,
+            "race_name":     race.race_name,
+            "max_votes":     race.max_votes,
+            "nota_ref_id":   race.nota_ref_id,
+            "voted":         race.race_id in voted_ids,
+            "unique_voters": uv_map.get(race.race_id, 0),
+            "candidates":    [cand_dict(c) for c in regular],
+            "nota":          cand_dict(nota[0]) if nota else None,
+        })
+    return _ok({"races": data})
+
+
+# â”€â”€ API: issue token â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+@csrf_exempt
+@require_student
+@require_http_methods(["POST"])
+def issue_token_view(request):
+    data    = _json(request)
+    race_id = (data.get("race_id") or "").strip()
+    if not race_id:
+        return _err("race_id is required.")
+    try:
+        race = Race.objects.get(race_id=race_id, is_active=True)
+    except Race.DoesNotExist:
+        return _err("Race not found.")
+    try:
+        raw_token = issue_token_for_race(request.voter, race)
+    except ValueError as e:
+        return _err(str(e), status=409)
+    return _ok({"token": raw_token, "race_id": race_id})
+
+
+# â”€â”€ API: vote (ballot submission) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+@csrf_exempt
+@require_student
+@require_http_methods(["POST"])
+def vote_view(request):
+    """
+    Body: { token, race_id, candidate_ref_ids: [int, ...] }
+    candidate_ref_ids can be 1..max_votes regular candidates, OR [nota_ref_id].
+    """
+    data              = _json(request)
+    raw_token         = (data.get("token") or "").strip()
+    race_id           = (data.get("race_id") or "").strip()
+    candidate_ref_ids = data.get("candidate_ref_ids", [])
+
+    if not raw_token:          return _err("token is required.")
+    if not race_id:            return _err("race_id is required.")
+    if not isinstance(candidate_ref_ids, list) or not candidate_ref_ids:
+        return _err("candidate_ref_ids must be a non-empty list.")
+
+    try:
+        candidate_ref_ids = [int(x) for x in candidate_ref_ids]
+    except (TypeError, ValueError):
+        return _err("candidate_ref_ids must be integers.")
+
+    try:
+        receipt = submit_ballot(raw_token, race_id, candidate_ref_ids)
+    except VoteError as e:
+        return _err(str(e), status=409)
+
+    return _ok({"message": "Ballot recorded.", "receipt": receipt, "race_id": race_id})
+
+
+# â”€â”€ API: verify receipt â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def verify_receipt_view(request):
+    data    = _json(request)
+    receipt = (data.get("receipt") or "").strip().lower()
+    if len(receipt) != 64:
+        return _err("receipt must be a 64-character hex SHA256 hash.")
+    return _ok({"found": verify_receipt(receipt)})
+
+
+# â”€â”€ API: results (AUEC admin only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+@require_auec_admin
+def results_view(request):
+    race_id = request.GET.get("race_id")
+    return _ok({"results": get_results(race_id or None)})
+
+
+# â”€â”€ API: ledger (AUEC admin only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+@require_auec_admin
+def ledger_view(request):
+    race_id = request.GET.get("race_id")
+    ledger  = build_ledger(race_id or None)
+    return _ok({"ledger": ledger, "count": len(ledger)})

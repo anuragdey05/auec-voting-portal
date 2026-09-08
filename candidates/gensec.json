@@ -1,0 +1,50 @@
+{
+  "race_id": "gensec",
+  "race_name": "General Secretary",
+  "max_votes": 1,
+  "nota_ref_id": 999,
+  "eligible_suffixes": ["all"],
+  "candidates": [
+    {
+      "id": 30,
+      "name": "Animesh Ojha",
+      "affiliation": "Independent",
+      "year": "MA2025",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "AO",
+      "is_nota": false
+    },
+    {
+      "id": 31,
+      "name": "Kriti Chhibber",
+      "affiliation": "Horizon",
+      "year": "UG2024",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "KC",
+      "is_nota": false
+    },
+    {
+      "id": 32,
+      "name": "Sulagna Moitra",
+      "affiliation": "United Students' Front",
+      "year": "UG2023",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "SM",
+      "is_nota": false
+    },
+    
+    {
+      "id": 999,
+      "name": "None of the Above",
+      "affiliation": "",
+      "year": "",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "—",
+      "is_nota": true
+    }
+  ]
+}

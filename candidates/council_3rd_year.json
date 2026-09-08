@@ -1,0 +1,43 @@
+{
+  "race_id": "council_3rd_year",
+  "race_name": "3rd Year Student Council",
+  "eligible_suffixes": ["_ug2024"],
+  "max_votes": 1,
+  "nota_ref_id": 999,
+  "candidates": [
+    
+    {
+      "id": 37,
+      "name": "Harshit Arya",
+      "affiliation": "Independent",
+      "year": "UG2024",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "HA",
+      "is_nota": false
+    },
+
+    {
+      "id": 38,
+      "name": "Trisha Iyer",
+      "affiliation": "United Students' Front",
+      "year": "UG2024",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "TI",
+      "is_nota": false
+    },
+    
+    {
+      "id": 999,
+      "name": "None of the Above",
+      "affiliation": "",
+      "year": "",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "—",
+      "is_nota": true
+    }
+    
+  ]
+}

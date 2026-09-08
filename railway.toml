@@ -1,0 +1,10 @@
+[build]
+builder = "nixpacks"
+buildCommand = "python manage.py collectstatic --noinput"
+
+[deploy]
+preDeployCommand = "python manage.py migrate --run-syncdb && python manage.py seed_data"
+startCommand = "gunicorn election.wsgi:application --workers 4 --threads 2 --bind 0.0.0.0:$PORT --timeout 30 --log-level info"
+healthcheckPath = "/health/"
+healthcheckTimeout = 30
+restartPolicyType = "always"
