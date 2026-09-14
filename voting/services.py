@@ -70,13 +70,17 @@ class VoteError(Exception):
 # ── Ballot submission ──────────────────────────────────────────────────────────
 
 def _check_voting_window():
+    import os
     IST = pytz.timezone("Asia/Kolkata")
     now_ist = timezone.now().astimezone(IST)
-    
-    open_time  = IST.localize(datetime(2026, 5, 18, 12, 0, 0))
-    close_time = IST.localize(datetime(2026, 5, 20, 12, 0, 0))
 
-    
+    # Configurable via env vars (ISO format, IST assumed).
+    # Defaults are wide-open for local development.
+    open_str  = os.getenv("VOTING_OPEN",  "2024-01-01T00:00:00")
+    close_str = os.getenv("VOTING_CLOSE", "2030-12-31T23:59:59")
+    open_time  = IST.localize(datetime.fromisoformat(open_str))
+    close_time = IST.localize(datetime.fromisoformat(close_str))
+
     if now_ist < open_time:
         opens_str = open_time.strftime("%-d %B %Y at %-I:%M %p IST")
         raise VoteError(f"Sorry, voting begins on {opens_str}.")
