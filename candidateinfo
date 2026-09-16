@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>AUEC · Candidates 2026</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --ink:#0e0e0f;
+  --paper:#f4f1eb;
+  --cream:#ece8de;
+  --gold:#b8902a;
+  --gold2:#d4a843;
+  --rust:#8b3a2a;
+  --muted:#6b6760;
+  --border:#ccc8be;
+  --green:#2a6b4a;
+  --r:4px;
+}
+
+*,*::before,*::after{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+body{
+  font-family:'DM Mono',monospace;
+  background:var(--paper);
+  color:var(--ink);
+  min-height:100vh;
+}
+
+/*  HEADER  */
+
+header{
+  border-bottom:2px solid var(--ink);
+  padding:16px 40px;
+  display:flex;
+  align-items:center;
+  gap:20px;
+  background:var(--paper);
+  position:sticky;
+  top:0;
+  z-index:100;
+}
+
+.logo{
+  font-family:'Playfair Display',serif;
+  font-size:21px;
+  font-weight:700;
+  letter-spacing:-.5px;
+}
+
+.logo span{
+  color:var(--gold);
+}
+
+.tagline{
+  font-size:10px;
+  color:var(--muted);
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.header-right{
+  margin-left:auto;
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+.hbtn{
+  font-family:'DM Mono',monospace;
+  font-size:10px;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  padding:7px 13px;
+  border:1px solid var(--border);
+  background:transparent;
+  cursor:pointer;
+  color:var(--muted);
+  text-decoration:none;
+  border-radius:var(--r);
+  transition:all .15s;
+}
+
+.hbtn:hover{
+  border-color:var(--ink);
+  color:var(--ink);
+}
+
+.hbtn.active{
+  background:var(--ink);
+  color:var(--paper);
+  border-color:var(--ink);
+}
+
+/*  MAIN  */
+
+main{
+  max-width:1100px;
+  margin:0 auto;
+  padding:52px 40px 70px;
+}
+
+/*  HERO  */
+
+.hero{
+  max-width:700px;
+  margin-bottom:42px;
+}
+
+.eyebrow{
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.15em;
+  color:var(--gold);
+  margin-bottom:12px;
+}
+
+h1{
+  font-family:'Playfair Display',serif;
+  font-size:46px;
+  line-height:1.02;
+  letter-spacing:-1px;
+  margin-bottom:14px;
+}
+
+.hero p{
+  font-size:11px;
+  line-height:1.7;
+  color:var(--muted);
+  max-width:620px;
+}
+
+/*  CONTROLS  */
+
+.controls{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+  margin-bottom:38px;
+  padding-bottom:18px;
+  border-bottom:1px solid var(--border);
+}
+
+.filter{
+  font-family:'DM Mono',monospace;
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  padding:8px 13px;
+  border:1px solid var(--border);
+  background:transparent;
+  color:var(--muted);
+  border-radius:var(--r);
+  cursor:pointer;
+  transition:all .15s;
+}
+
+.filter:hover{
+  border-color:var(--ink);
+  color:var(--ink);
+}
+
+.filter.active{
+  background:var(--ink);
+  color:var(--paper);
+  border-color:var(--ink);
+}
+
+.search{
+  margin-left:auto;
+  min-width:220px;
+  font-family:'DM Mono',monospace;
+  font-size:10px;
+  padding:9px 12px;
+  border:1px solid var(--border);
+  background:var(--paper);
+  color:var(--ink);
+  outline:none;
+  border-radius:var(--r);
+}
+
+.search:focus{
+  border-color:var(--ink);
+}
+
+/*  RACE  */
+
+.race-section{
+  margin-bottom:52px;
+}
+
+.race-heading{
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  gap:20px;
+  border-bottom:1px solid var(--ink);
+  padding-bottom:10px;
+  margin-bottom:14px;
+}
+
+.race-title{
+  font-family:'Playfair Display',serif;
+  font-size:23px;
+  font-weight:700;
+}
+
+.race-info{
+  font-size:9px;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:.07em;
+}
+
+/*  CANDIDATES  */
+
+.candidates{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+
+.candidate{
+  border:1px solid var(--border);
+  background:var(--paper);
+  border-radius:var(--r);
+  overflow:hidden;
+  transition:
+    border-color .15s,
+    transform .15s,
+    box-shadow .15s;
+}
+
+.candidate:hover{
+  border-color:var(--gold);
+  transform:translateY(-2px);
+  box-shadow:3px 3px 0 rgba(14,14,15,.08);
+}
+
+/* Main candidate area */
+
+.candidate-main{
+  min-height:145px;
+  padding:20px;
+  display:flex;
+  gap:16px;
+  align-items:flex-start;
+}
+
+.initials{
+  width:58px;
+  height:58px;
+  flex-shrink:0;
+
+  background:var(--ink);
+  color:var(--paper);
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  font-family:'Playfair Display',serif;
+  font-size:18px;
+  font-weight:700;
+
+  border-radius:2px;
+}
+
+.candidate-content{
+  min-width:0;
+}
+
+.candidate-name{
+  font-family:'Playfair Display',serif;
+  font-size:20px;
+  line-height:1.1;
+  font-weight:700;
+  margin-bottom:5px;
+}
+
+.candidate-affiliation{
+  color:var(--gold);
+  font-size:10px;
+  margin-bottom:7px;
+}
+
+.candidate-year{
+  font-size:9px;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.candidate-bio{
+  margin-top:11px;
+  font-size:10px;
+  color:var(--muted);
+  line-height:1.6;
+}
+
+/* Party strip */
+
+.party-strip{
+  height:6px;
+  border-top:1px solid var(--border);
+}
+
+.party-strip.independent{
+  background:var(--ink);
+}
+
+.party-strip.horizon{
+  background:#75ADBE;
+}
+
+.party-strip.usf{
+  background:#ae0000;
+}
+
+.party-strip.united-ashoka{
+  background:#4a6fa5;
+}
+
+/* Candidate footer */
+
+.candidate-footer{
+  border-top:1px solid var(--border);
+  padding:10px 14px;
+
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+
+  background:var(--cream);
+}
+
+.party-label{
+  font-size:8px;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:var(--muted);
+}
+
+.manifesto-btn{
+  font-family:'DM Mono',monospace;
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+
+  padding:6px 10px;
+
+  border:1px solid var(--border);
+  background:var(--paper);
+  color:var(--ink);
+
+  border-radius:var(--r);
+  cursor:pointer;
+}
+
+.manifesto-btn:hover{
+  border-color:var(--ink);
+}
+
+/*  EMPTY  */
+
+.empty{
+  padding:30px;
+  border:1px dashed var(--border);
+  color:var(--muted);
+  font-size:11px;
+  text-align:center;
+}
+
+/*  MODAL  */
+
+.modal{
+  position:fixed;
+  inset:0;
+
+  background:rgba(14,14,15,.55);
+
+  display:none;
+  align-items:center;
+  justify-content:center;
+
+  padding:20px;
+
+  z-index:500;
+}
+
+.modal.show{
+  display:flex;
+}
+
+.modal-box{
+  width:100%;
+  max-width:620px;
+
+  background:var(--paper);
+  border:2px solid var(--ink);
+  border-radius:var(--r);
+
+  padding:30px;
+
+  position:relative;
+
+  animation:modalIn .18s ease;
+}
+
+@keyframes modalIn{
+  from{
+    opacity:0;
+    transform:translateY(10px);
+  }
+  to{
+    opacity:1;
+    transform:translateY(0);
+  }
+}
+
+.modal-close{
+  position:absolute;
+  top:12px;
+  right:14px;
+
+  border:none;
+  background:none;
+
+  font-family:'DM Mono',monospace;
+  font-size:18px;
+
+  cursor:pointer;
+  color:var(--muted);
+}
+
+.modal-eyebrow{
+  font-size:9px;
+  color:var(--gold);
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  margin-bottom:8px;
+}
+
+.modal-title{
+  font-family:'Playfair Display',serif;
+  font-size:28px;
+  margin-bottom:5px;
+}
+
+.modal-meta{
+  font-size:10px;
+  color:var(--muted);
+  margin-bottom:22px;
+}
+
+.modal-body{
+  border-top:1px solid var(--border);
+  padding-top:18px;
+
+  font-size:11px;
+  line-height:1.8;
+  color:var(--muted);
+}
+
+.modal-body a{
+  color:var(--ink);
+}
+
+/*  FOOTER  */
+
+footer{
+  border-top:1px solid var(--border);
+  padding:14px 40px;
+
+  font-size:9px;
+  color:var(--muted);
+  letter-spacing:.06em;
+
+  display:flex;
+  justify-content:space-between;
+  gap:20px;
+}
+
+/*  RESPONSIVE  */
+
+@media(max-width:800px){
+
+  header{
+    padding:14px 20px;
+  }
+
+  .tagline{
+    display:none;
+  }
+
+  main{
+    padding:35px 20px 60px;
+  }
+
+  h1{
+    font-size:38px;
+  }
+
+  .candidates{
+    grid-template-columns:1fr;
+  }
+
+  .search{
+    width:100%;
+    margin-left:0;
+  }
+
+  footer{
+    padding:14px 20px;
+    flex-direction:column;
+  }
+}
+
+@media(max-width:500px){
+
+  .candidate-main{
+    padding:16px;
+  }
+
+  .candidate-name{
+    font-size:17px;
+  }
+
+  .initials{
+    width:48px;
+    height:48px;
+    font-size:15px;
+  }
+
+  .race-heading{
+    flex-direction:column;
+    gap:5px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+
+  <div class="logo">
+    AU<span>EC</span>
+  </div>
+
+  <div class="tagline">
+    Ashoka University · Student Elections 2026
+  </div>
+
+  <div class="header-right">
+
+    <a href="/" class="hbtn">
+      Home
+    </a>
+
+    <a href="/candidates/" class="hbtn active">
+      Candidates
+    </a>
+
+    <a href="/vote/" class="hbtn">
+      Vote
+    </a>
+
+  </div>
+
+</header>
+
+
+<main>
+
+  <section class="hero">
+
+    <div class="eyebrow">
+      AUEC · Student Elections 2026
+    </div>
+
+    <h1>
+      Meet the<br>
+      candidates.
+    </h1>
+
+    <p>
+      Explore the candidates contesting the 2026 Ashoka University
+      Student Elections. Candidates are grouped by the race they are
+      contesting.
+    </p>
+
+  </section>
+
+
+  <!-- FILTERS -->
+
+  <div class="controls">
+
+    <button class="filter active" data-filter="all">
+      All races
+    </button>
+
+    <button class="filter" data-filter="president">
+      President
+    </button>
+
+    <button class="filter" data-filter="gensec">
+      General Secretary
+    </button>
+
+    <button class="filter" data-filter="council_4th_year">
+      4th Year
+    </button>
+
+    <button class="filter" data-filter="council_3rd_year">
+      3rd Year
+    </button>
+
+    <button class="filter" data-filter="council_1st_year">
+      1st Year
+    </button>
+
+    <button class="filter" data-filter="yif">
+      YIF
+    </button>
+
+    <button class="filter" data-filter="late_graduate">
+      Late Graduate
+    </button>
+
+    <input
+      class="search"
+      id="candidate-search"
+      type="text"
+      placeholder="Search candidates..."
+      autocomplete="off"
+    >
+
+  </div>
+
+
+  <!-- CANDIDATES ARE INSERTED HERE -->
+
+  <div id="candidate-container"></div>
+
+</main>
+
+
+<footer>
+
+  <span>
+    AUEC Secure Voting System · Ashoka University 2026
+  </span>
+
+  <span>
+    Candidate information
+  </span>
+
+</footer>
+
+
+<!-- MODAL -->
+
+<div class="modal" id="candidate-modal">
+
+  <div class="modal-box">
+
+    <button class="modal-close" onclick="closeModal()">
+      ×
+    </button>
+
+    <div class="modal-eyebrow" id="modal-race">
+      Candidate
+    </div>
+
+    <div class="modal-title" id="modal-name">
+      Candidate
+    </div>
+
+    <div class="modal-meta" id="modal-meta">
+      —
+    </div>
+
+    <div class="modal-body" id="modal-body">
+      —
+    </div>
+
+  </div>
+
+</div>
+
+
+<script>
+
+/*    CANDIDATE DATA */
+
+const races = [
+
+  {
+    id: "president",
+    name: "Student Body President",
+    maxVotes: 1,
+    candidates: [
+      {
+        id: 1,
+        name: "Sudyotman Sudershan",
+        affiliation: "Independent",
+        year: "UG2024",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 2,
+        name: "Kriti Chhibber",
+        affiliation: "Horizon",
+        year: "UG2024",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 3,
+        name: "Partho Protim Roy",
+        affiliation: "United Students' Front",
+        year: "UG2024",
+        bio: "",
+        manifesto: ""
+      }
+    ]
+  },
+
+
+  {
+    id: "gensec",
+    name: "General Secretary",
+    maxVotes: 1,
+    candidates: [
+      {
+        id: 4,
+        name: "Chaitanya Gupta",
+        affiliation: "Independent",
+        year: "UG2025",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 5,
+        name: "Shatakshi Shelly",
+        affiliation: "Independent",
+        year: "UG2024",
+        bio: "",
+        manifesto: ""
+      }
+    ]
+  },
+
+
+  {
+    id: "council_4th_year",
+    name: "4th Year Student Council",
+    maxVotes: 4,
+    candidates: [
+      {
+        id: 6,
+        name: "Sulagna Moitra",
+        affiliation: "United Students' Front",
+        year: "UG2023",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 7,
+        name: "Vaanadhi Dhandapani",
+        affiliation: "Horizon",
+        year: "UG2023",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 8,
+        name: "Roshni Sudhir Patra",
+        affiliation: "Horizon",
+        year: "UG2023",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 9,
+        name: "Aryan Chaudhary",
+        affiliation: "Horizon",
+        year: "UG2023",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 10,
+        name: "Sneha Lohia",
+        affiliation: "United Students' Front",
+        year: "UG2023",
+        bio: "",
+        manifesto: ""
+      }
+    ]
+  },
+
+
+  {
+    id: "council_3rd_year",
+    name: "3rd Year Student Council",
+    maxVotes: 1,
+    candidates: [
+      {
+        id: 11,
+        name: "Trisha Iyer",
+        affiliation: "United Students' Front",
+        year: "UG2024",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 12,
+        name: "Kriti Chhibber",
+        affiliation: "Horizon",
+        year: "UG2024",
+        bio: "",
+        manifesto: ""
+      }
+    ]
+  },
+
+
+  {
+    id: "council_1st_year",
+    name: "1st Year Student Council",
+    maxVotes: 4,
+    candidates: [
+      {
+        id: 13,
+        name: "Zara Javed",
+        affiliation: "Independent",
+        year: "UG2026",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 14,
+        name: "Gurjas Singh Chadha",
+        affiliation: "Independent",
+        year: "UG2026",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 15,
+        name: "Harsh Ravi Nagdev",
+        affiliation: "Independent",
+        year: "UG2026",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 16,
+        name: "Hargun Singh",
+        affiliation: "Independent",
+        year: "UG2026",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 17,
+        name: "Sohraab Singh",
+        affiliation: "United Ashoka",
+        year: "UG2026",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 18,
+        name: "S S Rithu",
+        affiliation: "Independent",
+        year: "UG2026",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 19,
+        name: "Siddhi Shiva Prakash",
+        affiliation: "Independent",
+        year: "UG2026",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 20,
+        name: "Muskan",
+        affiliation: "United Students' Front",
+        year: "UG2026",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 21,
+        name: "Akshay Tulpule",
+        affiliation: "Independent",
+        year: "UG2026",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 22,
+        name: "Pranav Chandrashekar",
+        affiliation: "Independent",
+        year: "UG2026",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 23,
+        name: "Shreevats Shukla",
+        affiliation: "United Students' Front",
+        year: "UG2026",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 24,
+        name: "Lakshmi Sarayu Adepu",
+        affiliation: "United Ashoka",
+        year: "UG2026",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 25,
+        name: "Kavyaa Turakhia",
+        affiliation: "Independent",
+        year: "UG2026",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 26,
+        name: "Manya Varma",
+        affiliation: "Independent",
+        year: "UG2026",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 27,
+        name: "Nilesh Mandhyan",
+        affiliation: "Independent",
+        year: "UG2026",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 28,
+        name: "Manicka Kumar",
+        affiliation: "Independent",
+        year: "UG2026",
+        bio: "",
+        manifesto: ""
+      }
+    ]
+  },
+
+
+  {
+    id: "yif",
+    name: "YIF Cohort",
+    maxVotes: 1,
+    candidates: [
+      {
+        id: 29,
+        name: "Ahmad Yasin",
+        affiliation: "Independent",
+        year: "YIF 2027",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 30,
+        name: "Shambhavi Gupta",
+        affiliation: "Independent",
+        year: "YIF 2027",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 31,
+        name: "Abhishek Sharma",
+        affiliation: "Independent",
+        year: "YIF 2027",
+        bio: "",
+        manifesto: ""
+      }
+    ]
+  },
+
+
+  {
+    id: "late_graduate",
+    name: "Late Graduate Cohort",
+    maxVotes: 1,
+    candidates: [
+      {
+        id: 32,
+        name: "Ahmad Yasin",
+        affiliation: "Independent",
+        year: "YIF 2027",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 33,
+        name: "Shambhavi Gupta",
+        affiliation: "Independent",
+        year: "YIF 2027",
+        bio: "",
+        manifesto: ""
+      },
+      {
+        id: 34,
+        name: "Abhishek Sharma",
+        affiliation: "Independent",
+        year: "YIF 2027",
+        bio: "",
+        manifesto: ""
+      }
+    ]
+  }
+
+];
+
+
+/*    STATE */
+
+let currentFilter = "all";
+let currentSearch = "";
+
+
+/*    PARTY CLASS */
+
+function getPartyClass(affiliation){
+
+  const party = affiliation.toLowerCase();
+
+  if(party.includes("horizon")){
+    return "horizon";
+  }
+
+  if(party.includes("united ashoka")){
+    return "united-ashoka";
+  }
+
+  if(party.includes("united students")){
+    return "usf";
+  }
+
+  return "independent";
+}
+
+
+/*    INITIALS */
+
+function getInitials(name){
+
+  return String(name || "")
+    .trim()
+    .split(/\s+/)
+    .map(part => part[0] || "")
+    .join("")
+    .slice(0, 3)
+    .toUpperCase();
+
+}
+
+
+/*    ESCAPE HTML */
+
+function escapeHTML(value){
+
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+}
+
+
+/*    RENDER PAGE */
+
+function renderCandidates(){
+
+  const container =
+    document.getElementById("candidate-container");
+
+  const filteredRaces = races
+    .map(race => {
+
+      if(
+        currentFilter !== "all" &&
+        race.id !== currentFilter
+      ){
+        return null;
+      }
+
+      const candidates = race.candidates.filter(candidate => {
+
+        const query = currentSearch.toLowerCase().trim();
+
+        if(!query){
+          return true;
+        }
+
+        return (
+          candidate.name.toLowerCase().includes(query) ||
+          candidate.affiliation.toLowerCase().includes(query) ||
+          candidate.year.toLowerCase().includes(query)
+        );
+
+      });
+
+      return {
+        ...race,
+        candidates
+      };
+
+    })
+    .filter(Boolean)
+    .filter(race => race.candidates.length > 0);
+
+
+  if(filteredRaces.length === 0){
+
+    container.innerHTML = `
+      <div class="empty">
+        No candidates match your search.
+      </div>
+    `;
+
+    return;
+  }
+
+
+  container.innerHTML = filteredRaces.map(race => `
+
+    <section class="race-section">
+
+      <div class="race-heading">
+
+        <div class="race-title">
+          ${escapeHTML(race.name)}
+        </div>
+
+        <div class="race-info">
+          ${race.candidates.length}
+          candidate${race.candidates.length !== 1 ? "s" : ""}
+          ·
+          ${race.maxVotes === 1
+            ? "1 vote"
+            : `up to ${race.maxVotes} votes`}
+        </div>
+
+      </div>
+
+
+      <div class="candidates">
+
+        ${race.candidates.map(candidate => {
+
+          const partyClass =
+            getPartyClass(candidate.affiliation);
+
+          const initials =
+            candidate.initials || getInitials(candidate.name);
+
+          return `
+
+            <article class="candidate">
+
+              <div class="candidate-main">
+
+                <div class="initials">
+                  ${escapeHTML(initials)}
+                </div>
+
+                <div class="candidate-content">
+
+                  <div class="candidate-name">
+                    ${escapeHTML(candidate.name)}
+                  </div>
+
+                  <div class="candidate-affiliation">
+                    ${escapeHTML(candidate.affiliation)}
+                  </div>
+
+                  <div class="candidate-year">
+                    ${escapeHTML(candidate.year)}
+                  </div>
+
+                  ${
+                    candidate.bio
+                    ? `
+                      <div class="candidate-bio">
+                        ${escapeHTML(candidate.bio)}
+                      </div>
+                    `
+                    : ""
+                  }
+
+                </div>
+
+              </div>
+
+
+              <div class="party-strip ${partyClass}"></div>
+
+
+              <div class="candidate-footer">
+
+                <span class="party-label">
+                  ${escapeHTML(candidate.affiliation)}
+                </span>
+
+                <button
+                  class="manifesto-btn"
+                  onclick="openCandidate(${candidate.id}, '${race.id}')"
+                >
+                  View profile
+                </button>
+
+              </div>
+
+            </article>
+
+          `;
+
+        }).join("")}
+
+      </div>
+
+    </section>
+
+  `).join("");
+
+}
+
+
+/*    FILTER BUTTONS */
+
+document.querySelectorAll(".filter").forEach(button => {
+
+  button.addEventListener("click", () => {
+
+    document
+      .querySelectorAll(".filter")
+      .forEach(btn => btn.classList.remove("active"));
+
+    button.classList.add("active");
+
+    currentFilter =
+      button.dataset.filter;
+
+    renderCandidates();
+
+  });
+
+});
+
+
+/*    SEARCH */
+
+document
+  .getElementById("candidate-search")
+  .addEventListener("input", event => {
+
+    currentSearch = event.target.value;
+
+    renderCandidates();
+
+  });
+
+
+/*    OPEN CANDIDATE PROFILE */
+
+function openCandidate(candidateId, raceId){
+
+  const race =
+    races.find(r => r.id === raceId);
+
+  if(!race){
+    return;
+  }
+
+  const candidate =
+    race.candidates.find(
+      c => c.id === candidateId
+    );
+
+  if(!candidate){
+    return;
+  }
+
+
+  document.getElementById("modal-race")
+    .textContent = race.name;
+
+  document.getElementById("modal-name")
+    .textContent = candidate.name;
+
+  document.getElementById("modal-meta")
+    .textContent =
+      `${candidate.affiliation} · ${candidate.year}`;
+
+
+  const body =
+    document.getElementById("modal-body");
+
+
+  if(candidate.bio){
+
+    body.innerHTML =
+      escapeHTML(candidate.bio);
+
+  }else if(candidate.manifesto){
+
+    body.innerHTML = `
+      <a
+        href="${escapeHTML(candidate.manifesto)}"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Open candidate manifesto →
+      </a>
+    `;
+
+  }else{
+
+    body.innerHTML = `
+      <span style="color:var(--muted)">
+        Candidate profile information will be published here.
+      </span>
+    `;
+
+  }
+
+
+  document
+    .getElementById("candidate-modal")
+    .classList.add("show");
+
+}
+
+
+/*  CLOSE MODAL */
+
+function closeModal(){
+
+  document
+    .getElementById("candidate-modal")
+    .classList.remove("show");
+
+}
+
+
+/* Close when clicking outside modal */
+
+document
+  .getElementById("candidate-modal")
+  .addEventListener("click", event => {
+
+    if(event.target.id === "candidate-modal"){
+      closeModal();
+    }
+
+  });
+
+
+/* Close with Escape */
+
+document.addEventListener("keydown", event => {
+
+  if(event.key === "Escape"){
+    closeModal();
+  }
+
+});
+
+
+/* NITIAL RENDER */
+
+renderCandidates();
+
+</script>
+
+</body>
+</html>
