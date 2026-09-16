@@ -13,7 +13,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 # —— Core ———————————————————————————————————————————————————————————————————
-SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "build-time-fallback-key-replace-in-env")
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
 # Reads comma-separated hosts from env, e.g. "myapp.railway.app,myapp.up.railway.app"
@@ -28,6 +28,11 @@ CSRF_TRUSTED_ORIGINS = [
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True
+
+# Security Headers & Clickjacking Protection
+X_FRAME_OPTIONS = "DENY"
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
 
 # —— Apps ———————————————————————————————————————————————————————————————————
 INSTALLED_APPS = [
@@ -47,6 +52,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "social_django.middleware.SocialAuthExceptionMiddleware",
 ]
 
@@ -106,14 +112,16 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_AGE = 3600
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SAMESITE = "Lax"
 
 AUTHENTICATION_BACKENDS = [
     "social_core.backends.google.GoogleOAuth2",
     "django.contrib.auth.backends.ModelBackend",
 ]
 
-SOCIAL_AUTH_GOOGLE_OAUTH2_KEY    = os.environ["GOOGLE_OAUTH2_CLIENT_ID"]
-SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.environ["GOOGLE_OAUTH2_CLIENT_SECRET"]
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY    = os.getenv("GOOGLE_OAUTH2_CLIENT_ID", "")
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.getenv("GOOGLE_OAUTH2_CLIENT_SECRET", "")
 
 SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
     "openid",

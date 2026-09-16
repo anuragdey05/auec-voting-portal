@@ -16,6 +16,7 @@ from .services import (
     verify_receipt, get_results, build_ledger,
 )
 from .access import require_voter, require_student, require_auec_admin
+from .timeline import get_election_status
 
 logger = logging.getLogger("voting")
 
@@ -39,7 +40,8 @@ def index_view(request):
             voter = request.user.voter_profile
         except Exception:
             pass
-    return render(request, "index.html", {"voter": voter})
+    election = json.dumps(get_election_status())
+    return render(request, "index.html", {"voter": voter, "election": election})
 
 def auth_error_view(request):
     reason = request.GET.get("message", "Authentication failed.")
@@ -48,6 +50,12 @@ def auth_error_view(request):
 def logout_view(request):
     logout(request)
     return redirect("/")
+
+
+# ── API: election status (public, no auth) ────────────────────────────────────
+
+def election_status_view(request):
+    return _ok(get_election_status())
 
 
 # ── API: voter info ───────────────────────────────────────────────────────────
@@ -172,7 +180,7 @@ def vote_view(request):
 def verify_receipt_view(request):
     data    = _json(request)
     receipt = (data.get("receipt") or "").strip().lower()
-    if len(receipt) != 64:
+    if len(receipt) != 64 or not all(c in "0123456789abcdef" for c in receipt):
         return _err("receipt must be a 64-character hex SHA256 hash.")
     return _ok({"found": verify_receipt(receipt)})
 

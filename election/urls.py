@@ -33,6 +33,7 @@ urlpatterns = [
     # Voter-facing API
     path("api/me/",                  views.me_view,             name="me"),
     path("api/races/",               views.races_view,          name="races"),
+    path("api/election-status/",     views.election_status_view, name="election_status"),
     path("api/issue-token/",         views.issue_token_view,    name="issue_token"),
     path("api/vote/",                views.vote_view,           name="vote"),
     path("api/verify-receipt/",      views.verify_receipt_view, name="verify_receipt"),
