@@ -45,6 +45,7 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",   # serve static files, right after Security
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "social_django.middleware.SocialAuthExceptionMiddleware",
@@ -106,6 +107,7 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_AGE = 3600
+X_FRAME_OPTIONS = "DENY"
 
 AUTHENTICATION_BACKENDS = [
     "social_core.backends.google.GoogleOAuth2",
