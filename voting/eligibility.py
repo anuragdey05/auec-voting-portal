@@ -15,7 +15,8 @@ SUFFIX_RACE_MAP: list[tuple[str, list[str]]] = [
     ("_ug2023@ashoka.edu.in", ["president", "gensec", "council_4th_year"]),
     ("_ug2024@ashoka.edu.in", ["president", "gensec", "council_3rd_year"]),
     ("_ug2025@ashoka.edu.in", ["president", "gensec"]),
-    ("_ug25@ashoka.edu.in",   ["president", "gensec"]),
+    ("_ug2026@ashoka.edu.in", ["president", "gensec", "council_1st_year"]),
+    ("_ug25@ashoka.edu.in",   ["president", "gensec", "council_late_grad"]),
     ("_ma2024@ashoka.edu.in", ["president", "gensec"]),
     ("_ma2025@ashoka.edu.in", ["president", "gensec"]),
     ("_phd25@ashoka.edu.in",  ["president", "gensec"]),
@@ -25,11 +26,15 @@ SUFFIX_RACE_MAP: list[tuple[str, list[str]]] = [
     ("_phd21@ashoka.edu.in",  ["president", "gensec"]),
     ("_vsp25@ashoka.edu.in",  ["president", "gensec"]),
     ("_vsp26@ashoka.edu.in",  ["president", "gensec"]),
-    ("_ugt2024@ashoka.edu.in",["president", "gensec"]),
+    ("_ugt2023@ashoka.edu.in",["president", "gensec", "council_4th_year"]),
+    ("_ugt2024@ashoka.edu.in",["president", "gensec", "council_3rd_year"]),
     ("_ugt2025@ashoka.edu.in",["president", "gensec"]),
+    ("_ugt2026@ashoka.edu.in",["president", "gensec", "council_1st_year"]),
     ("_asp25@ashoka.edu.in",  ["president", "gensec"]),
     ("_asp26@ashoka.edu.in",  ["president", "gensec"]),
-    ("_yif26@ashoka.edu.in",  ["president", "gensec"]),
+    ("_yif24@ashoka.edu.in",  ["president", "gensec", "council_yif"]),
+    ("_yif26@ashoka.edu.in",  ["president", "gensec", "council_yif"]),
+    ("_yif27@ashoka.edu.in",  ["president", "gensec", "council_yif"]),
 
     ("parananda.majumdar_ug23@ashoka.edu.in", ["president", "gensec"]),
     ("mayank.singh_ug23@ashoka.edu.in", ["president", "gensec"]),
@@ -48,8 +53,11 @@ SUFFIX_RACE_MAP: list[tuple[str, list[str]]] = [
 CANDIDATE_FILES = [
     "president.json",
     "gensec.json",
+    "council_1st_year.json",
     "council_3rd_year.json",
     "council_4th_year.json",
+    "council_yif.json",
+    "council_late_grad.json",
 ]
 
 

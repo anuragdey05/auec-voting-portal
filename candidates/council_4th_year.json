@@ -6,38 +6,7 @@
   "nota_ref_id": 999,
   "candidates": [
     {
-      "id": 33,
-      "name": "Arnav Gupta",
-      "affiliation": "Horizon",
-      "year": "UG2023",
-      "manifesto_url": "",
-      "bio": "",
-      "photo_initials": "AG",
-      "is_nota": false
-    },
-    {
-      "id": 34,
-      "name": "Ayushi Choudhary",
-      "affiliation": "Horizon",
-      "year": "UG2023",
-      "manifesto_url": "",
-      "bio": "",
-      "photo_initials": "AC",
-      "is_nota": false
-    },
-    {
-      "id": 35,
-      "name": "Teesha Aurora",
-      "affiliation": "Horizon",
-      "year": "UG2023",
-      "manifesto_url": "",
-      "bio": "",
-      "photo_initials": "TA",
-      "is_nota": false
-    },
-
-    {
-      "id": 36,
+      "id": 6,
       "name": "Sulagna Moitra",
       "affiliation": "United Students' Front",
       "year": "UG2023",
@@ -46,7 +15,46 @@
       "photo_initials": "SM",
       "is_nota": false
     },
- 
+    {
+      "id": 7,
+      "name": "Vaanadhi Dhandapani",
+      "affiliation": "Horizon",
+      "year": "UG2023",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "VD",
+      "is_nota": false
+    },
+    {
+      "id": 8,
+      "name": "Roshni Sudhir Patra",
+      "affiliation": "Horizon",
+      "year": "UG2023",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "RSP",
+      "is_nota": false
+    },
+    {
+      "id": 9,
+      "name": "Aryan Chaudhary",
+      "affiliation": "Horizon",
+      "year": "UG2023",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "AC",
+      "is_nota": false
+    },
+    {
+      "id": 10,
+      "name": "Sneha Lohia",
+      "affiliation": "United Students' Front",
+      "year": "UG2023",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "SL",
+      "is_nota": false
+    },
     {
       "id": 999,
       "name": "None of the Above",
