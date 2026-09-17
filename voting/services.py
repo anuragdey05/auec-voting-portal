@@ -8,15 +8,19 @@ Multi-vote + NOTA rules:
 - submit_ballot() accepts a list of candidate_ref_ids in one atomic call.
   Each produces one Vote row. The token is marked used after all rows inserted.
 - Unique voter count = COUNT(DISTINCT token_hash) per race.
+- Election window enforcement delegated to voting.timeline.
 """
 import pytz
 import hashlib
+import hmac
 import secrets
 import logging
+from collections import defaultdict
 from django.db import transaction, IntegrityError
 from django.utils import timezone
 from datetime import datetime
 from .models import Race, Candidate, Voter, VotingToken, Vote
+from .timeline import require_active_election
 
 logger = logging.getLogger("voting")
 
@@ -47,18 +51,24 @@ def compute_receipt(token_hash: str, race_id: str, candidate_ref_ids: list[int])
 # ── Token issuance ─────────────────────────────────────────────────────────────
 
 def issue_token_for_race(voter: Voter, race: Race) -> str:
-    _check_voting_window()   
-    if not voter.eligible_races.filter(id=race.id).exists():
-        raise ValueError(f"Not eligible for: {race.race_name}")
-    if voter.has_voted_races.filter(id=race.id).exists():
-        raise ValueError(f"Already voted in: {race.race_name}")
-    existing = VotingToken.objects.filter(voter=voter, race=race, used=False).first()
-    if existing:
-        raise ValueError("Token already issued for this race.")
+    require_active_election()
+    with transaction.atomic():
+        v = Voter.objects.select_for_update().get(id=voter.id)
+        if not v.eligible_races.filter(id=race.id).exists():
+            raise ValueError(f"Not eligible for: {race.race_name}")
+        if v.has_voted_races.filter(id=race.id).exists():
+            raise ValueError(f"Already voted in: {race.race_name}")
+        existing = VotingToken.objects.filter(voter=v, race=race, used=False).first()
+        if existing:
+            raise ValueError("Token already issued for this race.")
 
-    raw_token  = secrets.token_urlsafe(32)
-    token_hash = sha256(raw_token)
-    VotingToken.objects.create(token_hash=token_hash, voter=voter, race=race)
+        raw_token  = secrets.token_urlsafe(32)
+        token_hash = sha256(raw_token)
+        try:
+            VotingToken.objects.create(token_hash=token_hash, voter=v, race=race)
+        except IntegrityError:
+            raise ValueError("Token already issued for this race.")
+
     logger.info("Token issued. voter_id=%d race=%s", voter.id, race.race_id)
     return raw_token
 
@@ -68,24 +78,6 @@ class VoteError(Exception):
 
 
 # ── Ballot submission ──────────────────────────────────────────────────────────
-
-def _check_voting_window():
-    import os
-    IST = pytz.timezone("Asia/Kolkata")
-    now_ist = timezone.now().astimezone(IST)
-
-    # Configurable via env vars (ISO format, IST assumed).
-    # Defaults are wide-open for local development.
-    open_str  = os.getenv("VOTING_OPEN",  "2024-01-01T00:00:00")
-    close_str = os.getenv("VOTING_CLOSE", "2030-12-31T23:59:59")
-    open_time  = IST.localize(datetime.fromisoformat(open_str))
-    close_time = IST.localize(datetime.fromisoformat(close_str))
-
-    if now_ist < open_time:
-        opens_str = open_time.strftime("%-d %B %Y at %-I:%M %p IST")
-        raise VoteError(f"Sorry, voting begins on {opens_str}.")
-    if now_ist >= close_time:
-        raise VoteError("Sorry, voting has ended.")
 
 
 
@@ -103,7 +95,7 @@ def submit_ballot(raw_token: str, race_id: str, candidate_ref_ids: list[int]) ->
     if not candidate_ref_ids:
         raise VoteError("No candidates selected.")
     
-    _check_voting_window()   
+    require_active_election()
 
     token_hash = sha256(raw_token)
 
@@ -124,7 +116,8 @@ def submit_ballot(raw_token: str, race_id: str, candidate_ref_ids: list[int]) ->
             raise VoteError("Token is not valid for this race.")
 
         try:
-            race = Race.objects.get(race_id=race_id, is_active=True)
+            # Row lock on Race serializes hash chain computation per race, preventing forks
+            race = Race.objects.select_for_update().get(race_id=race_id, is_active=True)
         except Race.DoesNotExist:
             raise VoteError("Race not found or not active.")
 
@@ -151,6 +144,8 @@ def submit_ballot(raw_token: str, race_id: str, candidate_ref_ids: list[int]) ->
             except Candidate.DoesNotExist:
                 raise VoteError(f"Candidate {ref_id} not found in race {race_id}.")
 
+        if not token.voter_id:
+            raise VoteError("Invalid token state.")
         voter_id = token.voter_id   # capture before null
         now      = timezone.now()
 
@@ -266,22 +261,21 @@ def build_ledger(race_id: str | None = None) -> list[dict]:
 def verify_receipt(receipt_hash: str) -> bool:
     """
     Verify receipt by recomputing for every distinct (token_hash, race) group.
-    Groups all vote rows for a token+race together as one ballot.
+    Runs a single query and groups in-memory to prevent N+1 query Denial-of-Service.
+    Uses constant-time comparison to mitigate timing side channels.
     """
-    from django.db.models import Count
-    groups = (
+    qs = (
         Vote.objects
-        .values("token_hash", "race__race_id")
-        .annotate(n=Count("id"))
+        .values("token_hash", "race__race_id", "candidate__candidate_ref_id")
+        .order_by("token_hash", "race__race_id")
     )
-    for group in groups:
-        th       = group["token_hash"]
-        rid      = group["race__race_id"]
-        ref_ids  = list(
-            Vote.objects
-            .filter(token_hash=th, race__race_id=rid)
-            .values_list("candidate__candidate_ref_id", flat=True)
-        )
-        if compute_receipt(th, rid, ref_ids) == receipt_hash:
+    ballots = defaultdict(list)
+    for row in qs:
+        key = (row["token_hash"], row["race__race_id"])
+        ballots[key].append(row["candidate__candidate_ref_id"])
+
+    for (th, rid), ref_ids in ballots.items():
+        computed = compute_receipt(th, rid, ref_ids)
+        if hmac.compare_digest(computed, receipt_hash):
             return True
     return False

@@ -21,6 +21,15 @@ header{border-bottom:2px solid var(--ink);padding:16px 40px;display:flex;align-i
 .hbtn:hover{border-color:var(--ink);color:var(--ink)}.hbtn.active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .role-badge{font-size:9px;padding:3px 8px;border-radius:2px;letter-spacing:.08em;text-transform:uppercase;background:var(--cream);border:1px solid var(--border);color:var(--muted)}
 .role-badge.admin{background:#fef3cd;border-color:var(--gold);color:var(--gold)}
+
+/* Election status pill */
+.status-pill{font-size:9px;padding:3px 10px;border-radius:10px;letter-spacing:.06em;text-transform:uppercase;display:inline-flex;align-items:center;gap:5px}
+.status-pill::before{content:'';width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.status-pill.upcoming{background:#fef3cd;border:1px solid #e8d48a;color:#8b6914}.status-pill.upcoming::before{background:#b8902a}
+.status-pill.active{background:#edf6f1;border:1px solid #a8d4bb;color:var(--green)}.status-pill.active::before{background:var(--green);animation:pulse-dot 2s ease infinite}
+.status-pill.ended{background:var(--cream);border:1px solid var(--border);color:var(--muted)}.status-pill.ended::before{background:var(--muted)}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.4}}
+
 main{flex:1;max-width:1100px;margin:0 auto;width:100%;padding:48px 40px;display:grid;grid-template-columns:1fr 320px;gap:40px}
 @media(max-width:820px){main{grid-template-columns:1fr;padding:24px 20px}header{padding:14px 20px}}
 .panel{display:none}.panel.active{display:block;animation:fadeUp .22s ease}
@@ -35,7 +44,7 @@ label{display:block;font-size:9px;letter-spacing:.12em;text-transform:uppercase;
 input[type=text]{width:100%;max-width:400px;font-family:'DM Mono',monospace;font-size:13px;padding:11px 13px;border:1px solid var(--border);background:var(--paper);color:var(--ink);border-radius:var(--r);outline:none;transition:border-color .15s}
 input:focus{border-color:var(--ink)}
 .btn{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.07em;text-transform:uppercase;padding:12px 26px;border:none;cursor:pointer;border-radius:var(--r);transition:all .15s;display:inline-flex;align-items:center;gap:7px}
-.btn-primary{background:var(--ink);color:var(--paper)}.btn-primary:hover{background:#2a2a2b}.btn-primary:disabled{background:var(--border);cursor:not-allowed}
+.btn-primary{background:var(--ink);color:var(--paper)}.btn-primary:hover{background:#2a2a2b}.btn-primary:disabled{background:var(--border);cursor:not-allowed;color:var(--muted)}
 .btn-gold{background:var(--gold);color:var(--paper)}.btn-gold:hover{background:var(--gold2)}
 .btn-outline{background:transparent;color:var(--ink);border:1px solid var(--border)}.btn-outline:hover{border-color:var(--ink)}
 
@@ -55,18 +64,6 @@ input:focus{border-color:var(--ink)}
 .nota-divider{display:flex;align-items:center;gap:8px;padding:6px 0;color:var(--muted);font-size:9px;letter-spacing:.1em;text-transform:uppercase}
 .nota-divider::before,.nota-divider::after{content:'';flex:1;height:1px;background:var(--border)}
 
-.cand-card{border:1.5px solid var(--border);padding:12px 14px;cursor:pointer;border-radius:var(--r);background:var(--paper);transition:all .15s;display:flex;align-items:center;gap:12px;position:relative}
-.cand-card:hover:not(.disabled-card){border-color:var(--gold);background:#faf7f0}
-.cand-card.selected{border-color:var(--ink);background:var(--cream)}
-.cand-card.selected::after{content:'✓';position:absolute;right:12px;font-size:14px;color:var(--green)}
-.cand-card.disabled-card{opacity:.45;cursor:default}
-.cand-card.nota-card{border-style:dashed}
-.cand-card.nota-card:hover:not(.disabled-card){border-color:var(--rust);background:#fdf8f7}
-.cand-card.nota-card.selected{border-color:var(--rust);border-style:solid;background:#fdf0ed}
-.cand-card.nota-card.selected::after{color:var(--rust)}
-
-/* affiliation corner sash */
-/* candidate cards */
 .cand-card{
   border:1.5px solid var(--border);
   cursor:pointer;
@@ -75,12 +72,20 @@ input:focus{border-color:var(--ink)}
   transition:all .15s;
   position:relative;
   overflow:hidden;
-
   display:grid;
   grid-template-columns: 1fr 92px;
   align-items:stretch;
   padding:0;
 }
+.cand-card:hover:not(.disabled-card){border-color:var(--gold);background:#faf7f0}
+.cand-card.selected{border-color:var(--ink);background:var(--cream)}
+.cand-card.selected::after{content:'✓';position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--green);z-index:2}
+.cand-card.disabled-card{opacity:.45;cursor:default}
+.cand-card.nota-card{border-style:dashed;grid-template-columns:1fr}
+.cand-card.nota-card .cand-party-strip{display:none}
+.cand-card.nota-card:hover:not(.disabled-card){border-color:var(--rust);background:#fdf8f7}
+.cand-card.nota-card.selected{border-color:var(--rust);border-style:solid;background:#fdf0ed}
+.cand-card.nota-card.selected::after{color:var(--rust)}
 
 .cand-card-main{
   display:flex;
@@ -89,29 +94,17 @@ input:focus{border-color:var(--ink)}
   padding:12px 14px;
   min-width:0;
 }
-
 .cand-party-strip{
   width:100%;
   height:100%;
   min-height:72px;
   border-left:1.5px solid var(--border);
 }
+.cand-party-strip.red{background:#ae0000}
+.cand-party-strip.blue{background:#75ADBE}
 
-.cand-party-strip.red{
-  background:#ae0000;
-}
-
-.cand-party-strip.blue{
-  background:#75ADBE;
-}
-
-.cand-card.no-party{
-  grid-template-columns: 1fr;
-}
-
-.cand-card.no-party .cand-party-strip{
-  display:none;
-}
+.cand-card.no-party{grid-template-columns:1fr}
+.cand-card.no-party .cand-party-strip{display:none}
 
 .cand-init{width:38px;height:38px;background:var(--ink);color:var(--paper);font-family:'Playfair Display',serif;font-size:14px;display:flex;align-items:center;justify-content:center;border-radius:2px;flex-shrink:0}
 .nota-card .cand-init{background:var(--muted);font-size:11px}
@@ -133,10 +126,11 @@ input:focus{border-color:var(--ink)}
 .receipts-list{display:flex;flex-direction:column;gap:12px;margin-bottom:20px}
 
 /* alert */
-.alert{padding:11px 14px;border-radius:var(--r);font-size:11px;margin-bottom:16px;max-width:480px;display:none}
+.alert{padding:11px 14px;border-radius:var(--r);font-size:11px;margin-bottom:16px;max-width:480px;display:none;animation:slideIn .2s ease}
 .alert.show{display:block}
 .alert-error{background:#fdf0ed;border:1px solid #e8b4a8;color:var(--rust)}
 .alert-success{background:#edf6f1;border:1px solid #a8d4bb;color:var(--green)}
+@keyframes slideIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 
 /* verify */
 .verify-result{padding:14px 16px;border-radius:var(--r);max-width:480px;display:none;margin-top:14px;font-size:12px}
@@ -173,7 +167,30 @@ input:focus{border-color:var(--ink)}
 .spinner.dark{border-color:rgba(0,0,0,.15);border-top-color:var(--ink)}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-footer{border-top:1px solid var(--border);padding:14px 40px;font-size:9px;color:var(--muted);letter-spacing:.06em;display:flex;justify-content:space-between}
+/* ── Countdown ──────────────────────────────────────────────────────── */
+.countdown-hero{display:flex;flex-direction:column;justify-content:center;min-height:55vh}
+.countdown-grid{display:flex;gap:10px;margin:28px 0 24px;flex-wrap:wrap}
+.cd-unit{background:var(--cream);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;min-width:68px;text-align:center}
+.cd-num{font-family:'Playfair Display',serif;font-size:32px;font-weight:700;line-height:1;letter-spacing:-1px}
+.cd-label{font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.cd-unit.seconds .cd-num{color:var(--gold)}
+@media(max-width:480px){.cd-unit{padding:10px 12px;min-width:58px}.cd-num{font-size:24px}}
+
+/* Ended hero */
+.ended-hero{display:flex;flex-direction:column;justify-content:center;min-height:55vh}
+.ended-badge{font-size:9px;padding:4px 12px;border-radius:2px;letter-spacing:.1em;text-transform:uppercase;background:var(--cream);border:1px solid var(--border);color:var(--muted);display:inline-block;margin-bottom:16px;width:fit-content}
+
+footer{border-top:1px solid var(--border);padding:14px 40px;font-size:9px;color:var(--muted);letter-spacing:.06em;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+@media(max-width:600px){footer{padding:14px 20px;flex-direction:column}}
+
+/* Mobile touch target improvements */
+@media(max-width:820px){
+  .cand-card-main{padding:14px 16px;gap:14px}
+  .cand-init{width:42px;height:42px;font-size:15px}
+  .cand-name{font-size:15px}
+  .btn{padding:14px 26px;min-height:44px}
+  .race-footer{padding:14px 16px}
+}
 </style>
 </head>
 <body>
@@ -187,7 +204,7 @@ footer{border-top:1px solid var(--border);padding:14px 40px;font-size:9px;color:
 <div>
 
   <!-- LOGIN -->
-  <div class="panel active" id="panel-login">
+  <div class="panel" id="panel-login">
     <div class="login-hero">
       <div class="h1">Vote in the<br/>2026 Student<br/>Elections.</div>
       <div class="sub" style="margin-top:12px">Sign in with your Ashoka University Google account to access your ballot. Your votes are cryptographically anonymous — your identity is permanently unlinked from your ballot the moment you submit.</div>
@@ -196,6 +213,32 @@ footer{border-top:1px solid var(--border);padding:14px 40px;font-size:9px;color:
         Continue with Google (@ashoka.edu.in)
       </a>
       <div style="margin-top:14px;font-size:10px;color:var(--muted)">Only <strong>@ashoka.edu.in</strong> accounts are accepted.</div>
+    </div>
+  </div>
+
+  <!-- UPCOMING — countdown to election start -->
+  <div class="panel" id="panel-upcoming">
+    <div class="countdown-hero">
+      <div class="ended-badge">Upcoming</div>
+      <div class="h1">Voting has<br/>not started yet.</div>
+      <div class="sub" style="margin-top:12px">The election opens on <strong id="upcoming-start-time"></strong>. This page will automatically transition when voting begins.</div>
+      <div class="countdown-grid" id="countdown-grid">
+        <div class="cd-unit"><div class="cd-num" id="cd-days">--</div><div class="cd-label">Days</div></div>
+        <div class="cd-unit"><div class="cd-num" id="cd-hours">--</div><div class="cd-label">Hours</div></div>
+        <div class="cd-unit"><div class="cd-num" id="cd-mins">--</div><div class="cd-label">Minutes</div></div>
+        <div class="cd-unit seconds"><div class="cd-num" id="cd-secs">--</div><div class="cd-label">Seconds</div></div>
+      </div>
+      <div style="font-size:10px;color:var(--muted)" id="upcoming-login-hint"></div>
+    </div>
+  </div>
+
+  <!-- ENDED — election closed -->
+  <div class="panel" id="panel-ended">
+    <div class="ended-hero">
+      <div class="ended-badge">Closed</div>
+      <div class="h1">Voting has<br/>ended.</div>
+      <div class="sub" style="margin-top:12px">The election closed on <strong id="ended-time"></strong>. Thank you for participating. You can still verify your receipt below.</div>
+      <button class="btn btn-outline" onclick="switchNav('verify')" style="margin-top:8px">Verify a receipt</button>
     </div>
   </div>
 
@@ -265,7 +308,7 @@ footer{border-top:1px solid var(--border);padding:14px 40px;font-size:9px;color:
 
 <footer>
   <span>AUEC Secure Voting System · Ashoka University 2026</span>
-  <span>SHA-256 hash chain · Zero user-vote linkage</span>
+  <span id="footer-status">SHA-256 hash chain · Zero user-vote linkage</span>
 </footer>
 
 <script>
@@ -275,6 +318,7 @@ let sessionReceipts = []; // [{race_id, race_name, receipt}]
 // Per-race selections: { race_id: { ref_ids: Set, nota: bool } }
 const ballots = {};
 
+<<<<<<< HEAD
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
     '&': '&amp;',
@@ -286,16 +330,94 @@ function escapeHtml(value) {
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
+=======
+// ── HTML Sanitization ────────────────────────────────────────────────────────
+function esc(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// ── Election timeline state ─────────────────────────────────────────────────
+let electionStatus = null;  // {status, server_now, start, end, start_ist, end_ist}
+let serverDrift    = 0;     // ms offset: serverTime - clientTime
+let countdownTimer = null;
+let statusPollTimer = null;
+
+// Server-side injected initial status (avoids first fetch flash)
+const INITIAL_ELECTION = {{ election|safe }};
+
+// ── Corrected "server now" using drift offset ───────────────────────────────
+function serverNow() {
+  return new Date(Date.now() + serverDrift);
+}
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+>>>>>>> origin/main
 async function boot() {
+  // Fetch election status (or use server-injected initial)
+  await fetchElectionStatus();
   await fetchMe();
   renderHeader();
-  if (!voterData) { showPanel('login'); return; }
-  if (voterData.role === 'auec_admin') {
+
+  const status = electionStatus ? electionStatus.status : 'active';
+
+  if (voterData && voterData.role === 'auec_admin') {
+    // Admins bypass election timeline — always see dashboard
     showPanel('admin'); renderAdminNav();
     loadAdminResults(); loadAdminSidebar();
-  } else {
-    showPanel('vote'); renderStudentNav();
-    loadRaces(); loadStudentSidebar();
+    updateFooterStatus();
+    return;
+  }
+
+  if (status === 'upcoming') {
+    showPanel('upcoming');
+    renderUpcoming();
+    startCountdown();
+    if (voterData) renderHeader();
+    updateFooterStatus();
+    return;
+  }
+
+  if (status === 'ended') {
+    showPanel('ended');
+    renderEnded();
+    if (voterData) {
+      renderEndedNav();
+    }
+    updateFooterStatus();
+    return;
+  }
+
+  // status === 'active'
+  if (!voterData) { showPanel('login'); updateFooterStatus(); return; }
+  showPanel('vote'); renderStudentNav();
+  loadRaces(); loadStudentSidebar();
+  startStatusPolling();
+  updateFooterStatus();
+}
+
+async function fetchElectionStatus() {
+  try {
+    const r = await fetch('/api/election-status/');
+    const d = await r.json();
+    if (d.ok) {
+      electionStatus = d;
+      // Compute drift: server_now (UTC ISO) vs local clock
+      const serverMs = new Date(d.server_now).getTime();
+      serverDrift = serverMs - Date.now();
+    }
+  } catch(e) {
+    // Fallback: use server-injected initial
+    if (INITIAL_ELECTION) {
+      electionStatus = INITIAL_ELECTION;
+      const serverMs = new Date(INITIAL_ELECTION.server_now).getTime();
+      serverDrift = serverMs - Date.now();
+    }
   }
 }
 
@@ -308,15 +430,134 @@ async function fetchMe() {
   } catch(e) { voterData = null; }
 }
 
+// ── Upcoming state ───────────────────────────────────────────────────────────
+function renderUpcoming() {
+  if (!electionStatus) return;
+  document.getElementById('upcoming-start-time').textContent = electionStatus.start_ist;
+
+  if (voterData) {
+    document.getElementById('upcoming-login-hint').innerHTML =
+      `Signed in as <strong>${voterData.email}</strong>. You'll be able to vote once the election begins.`;
+  } else {
+    document.getElementById('upcoming-login-hint').innerHTML =
+      `<a href="/auth/login/google-oauth2/" style="color:var(--ink);text-decoration:underline">Sign in</a> now so you're ready when voting opens.`;
+  }
+
+  // Sidebar info
+  const sb = document.getElementById('sidebar-content');
+  sb.innerHTML = `
+    <div style="background:var(--cream);border:1px solid var(--border);padding:14px;border-radius:var(--r)">
+      <div style="font-family:'Playfair Display',serif;font-size:15px;font-weight:600;margin-bottom:8px">Election details</div>
+      <div style="font-size:10px;color:var(--muted);line-height:1.8">
+        <div><strong>Opens:</strong> ${electionStatus.start_ist}</div>
+        <div><strong>Closes:</strong> ${electionStatus.end_ist}</div>
+      </div>
+    </div>`;
+}
+
+function startCountdown() {
+  if (countdownTimer) clearInterval(countdownTimer);
+  updateCountdown(); // immediate tick
+  countdownTimer = setInterval(updateCountdown, 1000);
+}
+
+function updateCountdown() {
+  if (!electionStatus) return;
+  const startMs = new Date(electionStatus.start).getTime();
+  const nowMs   = serverNow().getTime();
+  let diff      = startMs - nowMs;
+
+  if (diff <= 0) {
+    // Election has started — transition!
+    clearInterval(countdownTimer);
+    document.getElementById('cd-days').textContent = '0';
+    document.getElementById('cd-hours').textContent = '0';
+    document.getElementById('cd-mins').textContent = '0';
+    document.getElementById('cd-secs').textContent = '0';
+    // Re-fetch status and re-boot
+    setTimeout(async () => {
+      await fetchElectionStatus();
+      await boot();
+    }, 500);
+    return;
+  }
+
+  const days  = Math.floor(diff / 86400000); diff %= 86400000;
+  const hours = Math.floor(diff / 3600000);  diff %= 3600000;
+  const mins  = Math.floor(diff / 60000);    diff %= 60000;
+  const secs  = Math.floor(diff / 1000);
+
+  document.getElementById('cd-days').textContent  = String(days);
+  document.getElementById('cd-hours').textContent = String(hours).padStart(2,'0');
+  document.getElementById('cd-mins').textContent  = String(mins).padStart(2,'0');
+  document.getElementById('cd-secs').textContent  = String(secs).padStart(2,'0');
+}
+
+// ── Ended state ──────────────────────────────────────────────────────────────
+function renderEnded() {
+  if (!electionStatus) return;
+  document.getElementById('ended-time').textContent = electionStatus.end_ist;
+}
+
+function renderEndedNav() {
+  const el = document.getElementById('header-right');
+  el.innerHTML = `
+    <button class="hbtn" id="nav-verify" onclick="switchNav('verify')">Verify</button>
+  ` + el.innerHTML;
+}
+
+// ── Status polling (during active election, detect end) ──────────────────────
+function startStatusPolling() {
+  if (statusPollTimer) clearInterval(statusPollTimer);
+  statusPollTimer = setInterval(async () => {
+    await fetchElectionStatus();
+    if (electionStatus && electionStatus.status === 'ended') {
+      clearInterval(statusPollTimer);
+      // Show alert then transition
+      showAlert('vote-alert', 'Voting has ended. No more ballots can be submitted.', 'error');
+      setTimeout(() => boot(), 3000);
+    }
+  }, 30000); // every 30s
+}
+
+// ── Footer status ────────────────────────────────────────────────────────────
+function updateFooterStatus() {
+  const el = document.getElementById('footer-status');
+  if (!electionStatus) return;
+  if (electionStatus.status === 'active') {
+    el.textContent = `Voting closes ${electionStatus.end_ist}`;
+  } else if (electionStatus.status === 'upcoming') {
+    el.textContent = `Voting opens ${electionStatus.start_ist}`;
+  } else {
+    el.textContent = `Election closed ${electionStatus.end_ist}`;
+  }
+}
+
 // ── Header ───────────────────────────────────────────────────────────────────
 function renderHeader() {
   const el = document.getElementById('header-right');
-  if (!voterData) { el.innerHTML = `<a href="/auth/login/google-oauth2/" class="hbtn active">Sign in</a>`; return; }
+  const statusPill = getStatusPillHTML();
+
+  if (!voterData) {
+    el.innerHTML = `${statusPill}<a href="/auth/login/google-oauth2/" class="hbtn active">Sign in</a>`;
+    return;
+  }
   const isAdmin = voterData.role === 'auec_admin';
   el.innerHTML = `
+    ${statusPill}
     <span class="role-badge ${isAdmin ? 'admin' : ''}">${isAdmin ? 'AUEC Admin' : 'Student'}</span>
+<<<<<<< HEAD
     <span style="font-size:10px;color:var(--muted)">${escapeHtml(voterData.email)}</span>
+=======
+    <span style="font-size:10px;color:var(--muted)">${esc(voterData.email)}</span>
+>>>>>>> origin/main
     <a href="/logout/" class="hbtn">Sign out</a>`;
+}
+
+function getStatusPillHTML() {
+  if (!electionStatus) return '';
+  const labels = { upcoming: 'Upcoming', active: 'Live', ended: 'Closed' };
+  return `<span class="status-pill ${electionStatus.status}">${labels[electionStatus.status]}</span>`;
 }
 
 function renderStudentNav() {
@@ -431,11 +672,19 @@ function candidateCardHTML(race, c, voted) {
   return `
     <div class="cand-card ${dis} ${!stripClass ? 'no-party' : ''}" id="cand-${raceIdEncoded}-${refId}" ${onclick}>
       <div class="cand-card-main">
+<<<<<<< HEAD
         <div class="cand-init">${initials}</div>
         <div>
           <div class="cand-name">${name}</div>
           <div class="cand-affil">${affiliation}</div>
           <div class="cand-bio">${bio}</div>
+=======
+        <div class="cand-init">${esc(c.photo_initials || c.name[0])}</div>
+        <div>
+          <div class="cand-name">${esc(c.name)}</div>
+          <div class="cand-affil">${esc(c.affiliation)}</div>
+          <div class="cand-bio">${esc(c.bio)}</div>
+>>>>>>> origin/main
         </div>
       </div>
       <div class="cand-party-strip ${stripClass}"></div>
@@ -449,11 +698,21 @@ function notaCardHTML(race, nota, voted) {
   const dis = voted ? 'disabled-card' : '';
   const onclick = voted ? '' : `onclick="toggleCandidate(decodeURIComponent('${raceIdEncoded}'),${refId},true)"`;
   return `
+<<<<<<< HEAD
     <div class="cand-card nota-card ${dis}" id="cand-${raceIdEncoded}-${refId}" ${onclick}>
       <div class="cand-init">N/A</div>
       <div>
         <div class="cand-name">None of the Above (NOTA)</div>
         <div class="cand-bio">${bio}</div>
+=======
+    <div class="cand-card nota-card ${dis}" id="cand-${race.race_id}-${nota.candidate_ref_id}" ${onclick}>
+      <div class="cand-card-main">
+        <div class="cand-init">N/A</div>
+        <div>
+          <div class="cand-name">None of the Above (NOTA)</div>
+          <div class="cand-bio">${esc(nota.bio)}</div>
+        </div>
+>>>>>>> origin/main
       </div>
     </div>`;
 }
@@ -593,8 +852,13 @@ function renderReceipts() {
   document.getElementById('receipts-container').innerHTML = sessionReceipts.map(r => `
     <div class="receipt-box">
       <div class="receipt-stamp">VOTED</div>
+<<<<<<< HEAD
       <div class="receipt-race">${escapeHtml(r.race_name)}${r.is_nota ? ' · NOTA' : ` · ${r.selections} selection${r.selections!==1?'s':''}`}</div>
       <div class="receipt-hash">${escapeHtml(r.receipt)}</div>
+=======
+      <div class="receipt-race">${esc(r.race_name)}${r.is_nota ? ' · NOTA' : ` · ${r.selections} selection${r.selections!==1?'s':''}`}</div>
+      <div class="receipt-hash">${esc(r.receipt)}</div>
+>>>>>>> origin/main
       <div class="receipt-note">Use this hash in the Verify tab to confirm it appears in the ledger.</div>
     </div>`).join('');
 }
@@ -730,7 +994,28 @@ function showAlert(id,msg,type='error'){const el=document.getElementById(id);el.
 function hideAlert(id){document.getElementById(id).className='alert'}
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-{% if voter %}boot();{% else %}showPanel('login');document.getElementById('header-right').innerHTML=`<a href="/auth/login/google-oauth2/" class="hbtn active">Sign in</a>`;{% endif %}
+{% if voter %}boot();{% else %}
+// Not logged in — still need election status for upcoming/ended
+(async function(){
+  await fetchElectionStatus();
+  renderHeader();
+  const status = electionStatus ? electionStatus.status : 'active';
+  if (status === 'upcoming') {
+    showPanel('upcoming');
+    renderUpcoming();
+    startCountdown();
+    updateFooterStatus();
+  } else if (status === 'ended') {
+    showPanel('ended');
+    renderEnded();
+    renderEndedNav();
+    updateFooterStatus();
+  } else {
+    showPanel('login');
+    updateFooterStatus();
+  }
+})();
+{% endif %}
 </script>
 </body>
 </html>
