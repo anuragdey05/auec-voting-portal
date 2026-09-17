@@ -11,6 +11,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import logout
 
 from .models import Race
+from .population import get_race_population
 from .services import (
     VoteError, issue_token_for_race, submit_ballot,
     verify_receipt, get_results, build_ledger,
@@ -106,15 +107,21 @@ def races_view(request):
                 "photo_initials":   c.photo_initials,
                 "is_nota":          c.is_nota,
             }
+        uv = uv_map.get(race.race_id, 0)
+        pop = get_race_population(race.race_id)
+        ep = pop["eligible_population"]
+        voter_pct = round(uv / ep * 100, 2) if ep else 0
         data.append({
-            "race_id":       race.race_id,
-            "race_name":     race.race_name,
-            "max_votes":     race.max_votes,
-            "nota_ref_id":   race.nota_ref_id,
-            "voted":         race.race_id in voted_ids,
-            "unique_voters": uv_map.get(race.race_id, 0),
-            "candidates":    [cand_dict(c) for c in regular],
-            "nota":          cand_dict(nota[0]) if nota else None,
+            "race_id":              race.race_id,
+            "race_name":            race.race_name,
+            "max_votes":            race.max_votes,
+            "nota_ref_id":          race.nota_ref_id,
+            "voted":                race.race_id in voted_ids,
+            "unique_voters":        uv,
+            "eligible_population":  ep,
+            "voter_percentage":     voter_pct,
+            "candidates":           [cand_dict(c) for c in regular],
+            "nota":                 cand_dict(nota[0]) if nota else None,
         })
     return _ok({"races": data})
 
@@ -201,4 +208,42 @@ def ledger_view(request):
     ledger  = build_ledger(race_id or None)
     return _ok({"ledger": ledger, "count": len(ledger)})
 
-#triggering redeploy
+# ── API: quorum tracker (any authenticated voter) ─────────────────────────────
+
+@require_voter
+def quorum_view(request):
+    """Returns all active races with vote counts, population, and quorum data."""
+    from django.db.models import Count
+    from .models import Vote
+
+    races = Race.objects.filter(is_active=True)
+
+    # Unique voter counts per race (distinct token hashes)
+    uv_map = {
+        row["race__race_id"]: row["uv"]
+        for row in (
+            Vote.objects
+            .values("race__race_id")
+            .annotate(uv=Count("token_hash", distinct=True))
+        )
+    }
+
+    data = []
+    for race in races:
+        pop = get_race_population(race.race_id)
+        votes_cast = uv_map.get(race.race_id, 0)
+        ep = pop["eligible_population"]
+        quorum_required = pop["quorum"]
+        voter_pct = round(votes_cast / ep * 100, 2) if ep else 0
+        quorum_pct = round(votes_cast / quorum_required * 100, 2) if quorum_required else 0
+        data.append({
+            "race_id":              race.race_id,
+            "race_name":            race.race_name,
+            "votes_cast":           votes_cast,
+            "eligible_population":  ep,
+            "voter_percentage":     voter_pct,
+            "quorum_required":      quorum_required,
+            "quorum_percentage":    quorum_pct,
+            "quorum_reached":       votes_cast >= quorum_required,
+        })
+    return _ok({"races": data})

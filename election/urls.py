@@ -37,6 +37,7 @@ urlpatterns = [
     path("api/issue-token/",         views.issue_token_view,    name="issue_token"),
     path("api/vote/",                views.vote_view,           name="vote"),
     path("api/verify-receipt/",      views.verify_receipt_view, name="verify_receipt"),
+    path("api/quorum/",              views.quorum_view,         name="quorum"),
 
     # AUEC admin API
     path("api/results/",             views.results_view,        name="results"),

@@ -102,6 +102,7 @@ input:focus{border-color:var(--ink)}
 }
 .cand-party-strip.red{background:#ae0000}
 .cand-party-strip.blue{background:#75ADBE}
+.cand-party-strip.yellow{background:#E6AC00}
 
 .cand-card.no-party{grid-template-columns:1fr}
 .cand-card.no-party .cand-party-strip{display:none}
@@ -191,6 +192,16 @@ footer{border-top:1px solid var(--border);padding:14px 40px;font-size:9px;color:
   .btn{padding:14px 26px;min-height:44px}
   .race-footer{padding:14px 16px}
 }
+
+/* Quorum tracker */
+.quorum-race{margin-bottom:20px;padding:16px;border:1px solid var(--border);border-radius:var(--r);background:var(--cream)}
+.quorum-title{font-family:'Playfair Display',serif;font-size:15px;font-weight:600;margin-bottom:8px}
+.quorum-pct{font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:var(--ink);margin-bottom:4px}
+.quorum-bar-track{width:100%;height:10px;background:var(--border);border-radius:5px;overflow:hidden;margin:6px 0}
+.quorum-bar-fill{height:100%;border-radius:5px;background:var(--gold);transition:width .6s ease}
+.quorum-bar-fill.reached{background:var(--green)}
+.quorum-stats{font-size:10px;color:var(--muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px}
+.quorum-reached-badge{font-size:9px;padding:3px 8px;border-radius:2px;background:#edf6f1;border:1px solid #a8d4bb;color:var(--green);text-transform:uppercase;letter-spacing:.06em}
 </style>
 </head>
 <body>
@@ -285,6 +296,15 @@ footer{border-top:1px solid var(--border);padding:14px 40px;font-size:9px;color:
     <div class="verify-result" id="verify-result"></div>
   </div>
 
+  <!-- QUORUM -->
+  <div class="panel" id="panel-quorum">
+    <div class="h1">Quorum<br/>tracker.</div>
+    <div class="sub">Live progress toward the 40% quorum threshold for each race. Updates automatically.</div>
+    <div id="quorum-container">
+      <div style="font-size:12px;color:var(--muted)">Loading quorum data…</div>
+    </div>
+  </div>
+
   <!-- ADMIN -->
   <div class="panel" id="panel-admin">
     <div class="h1">Election<br/>dashboard.</div>
@@ -317,6 +337,7 @@ let voterData    = null;
 let sessionReceipts = []; // [{race_id, race_name, receipt}]
 // Per-race selections: { race_id: { ref_ids: Set, nota: bool } }
 const ballots = {};
+let quorumPollTimer = null;
 
 // ── HTML Sanitization ────────────────────────────────────────────────────────
 function esc(str) {
@@ -488,6 +509,7 @@ function renderEnded() {
 function renderEndedNav() {
   const el = document.getElementById('header-right');
   el.innerHTML = `
+    <button class="hbtn" id="nav-quorum" onclick="switchNav('quorum')">Quorum</button>
     <button class="hbtn" id="nav-verify" onclick="switchNav('verify')">Verify</button>
   ` + el.innerHTML;
 }
@@ -546,25 +568,33 @@ function renderStudentNav() {
   const el = document.getElementById('header-right');
   el.innerHTML = `
     <button class="hbtn active" id="nav-vote" onclick="switchNav('vote')">Vote</button>
+    <button class="hbtn" id="nav-quorum" onclick="switchNav('quorum')">Quorum</button>
     <button class="hbtn" id="nav-verify" onclick="switchNav('verify')">Verify</button>
   ` + el.innerHTML;
 }
 
 function renderAdminNav() {
   const el = document.getElementById('header-right');
-  el.innerHTML = `<button class="hbtn active" id="nav-admin">Results</button>` + el.innerHTML;
+  el.innerHTML = `
+    <button class="hbtn active" id="nav-admin" onclick="switchNav('admin')">Results</button>
+    <button class="hbtn" id="nav-quorum" onclick="switchNav('quorum')">Quorum</button>
+  ` + el.innerHTML;
 }
 
 function switchNav(name) {
   document.querySelectorAll('.hbtn[id^=nav-]').forEach(b => b.classList.remove('active'));
   const btn = document.getElementById('nav-'+name);
   if (btn) btn.classList.add('active');
+  // Stop quorum polling when navigating away
+  if (name !== 'quorum' && quorumPollTimer) { clearInterval(quorumPollTimer); quorumPollTimer = null; }
   if (name === 'vote') {
     if (voterData && voterData.remaining_races.length === 0 && sessionReceipts.length > 0) {
       showPanel('receipts');
     } else {
       loadRaces(); showPanel('vote');
     }
+  } else if (name === 'quorum') {
+    loadQuorum(); showPanel('quorum');
   } else {
     showPanel(name);
   }
@@ -593,6 +623,7 @@ function renderRaces(races) {
   el.innerHTML = races.map(race => {
     const maxVotes = Number(race.max_votes) || 1;
     const uniqueVoters = Number(race.unique_voters) || 0;
+    const voterPct = race.voter_percentage != null ? race.voter_percentage.toFixed(2) : '0.00';
     const raceIdEncoded = encodeURIComponent(String(race.race_id));
     const raceName = esc(race.race_name);
     const isMulti   = maxVotes > 1;
@@ -609,7 +640,7 @@ function renderRaces(races) {
         <span class="race-title">${raceName}</span>
         <div class="race-meta">
           <span class="voter-count" id="vc-${raceIdEncoded}">
-            ${uniqueVoters} voter${uniqueVoters !== 1 ? 's' : ''} participated
+            ${uniqueVoters} voter${uniqueVoters !== 1 ? 's' : ''} participated · ${voterPct}%
           </span>
           ${race.voted ? '<span class="voted-badge">Voted</span>' : ''}
         </div>
@@ -644,11 +675,13 @@ function candidateCardHTML(race, c, voted) {
 
   let stripClass = '';
   if (
-    aff.includes("united students' front") 
+    aff.includes("united students' front") || aff.includes("united students’ front")
   ) {
     stripClass = 'red';
   } else if (aff.includes('horizon')) {
     stripClass = 'blue';
+  } else if (aff.includes('united ashoka')) {
+    stripClass = 'yellow';
   }
 
   return `
@@ -851,6 +884,60 @@ async function doVerify() {
   } finally { document.getElementById('verify-spinner').style.display='none'; }
 }
 
+// ── Quorum Tracker ────────────────────────────────────────────────────────────
+async function loadQuorum() {
+  async function fetchAndRender() {
+    try {
+      const r = await fetch('/api/quorum/', {credentials:'include'});
+      const d = await r.json();
+      if (d.ok && d.races) {
+        renderQuorum(d.races);
+      } else if (d.error) {
+        const el = document.getElementById('quorum-container');
+        if (el) el.innerHTML = `<div style="font-size:12px;color:var(--rust)">${esc(d.error)}</div>`;
+      }
+    } catch(e) {
+      console.error('Error loading quorum:', e);
+    }
+  }
+
+  await fetchAndRender();
+
+  if (quorumPollTimer) clearInterval(quorumPollTimer);
+  quorumPollTimer = setInterval(fetchAndRender, 15000);
+}
+
+function renderQuorum(races) {
+  const el = document.getElementById('quorum-container');
+  if (!el) return;
+  if (!races || !races.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--muted)">No active races found.</div>';
+    return;
+  }
+  el.innerHTML = races.map(race => {
+    const barWidth = Math.min(Math.max(race.quorum_percentage, 0), 100);
+    const reached = race.quorum_reached;
+    const votesCast = Number(race.votes_cast).toLocaleString();
+    const quorumReq = Number(race.quorum_required).toLocaleString();
+    const quorumPct = Number(race.quorum_percentage).toFixed(2);
+    return `
+    <div class="quorum-race">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div class="quorum-title" style="margin-bottom:0">${esc(race.race_name)}</div>
+        ${reached ? '<span class="quorum-reached-badge">✓ Quorum reached</span>' : ''}
+      </div>
+      <div class="quorum-pct">${quorumPct}% <span style="font-size:11px;font-weight:400;color:var(--muted)">of quorum reached</span></div>
+      <div class="quorum-bar-track">
+        <div class="quorum-bar-fill ${reached ? 'reached' : ''}" style="width:${barWidth}%"></div>
+      </div>
+      <div class="quorum-stats">
+        <span><strong>${votesCast}</strong> votes cast</span>
+        <span><strong>${quorumReq}</strong> votes needed for quorum (40%)</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 // ── Student sidebar (ballot progress + live voter counts) ─────────────────────
 async function loadStudentSidebar() {
   if (!voterData) return;
@@ -862,7 +949,8 @@ async function loadStudentSidebar() {
     // Update voter count badges inline without full re-render
     d.races.forEach(race => {
       const el = document.getElementById(`vc-${race.race_id}`);
-      if (el) el.textContent = `${race.unique_voters} voter${race.unique_voters!==1?'s':''} participated`;
+      const pct = race.voter_percentage != null ? race.voter_percentage.toFixed(2) : '0.00';
+      if (el) el.textContent = `${race.unique_voters} voter${race.unique_voters!==1?'s':''} participated · ${pct}%`;
     });
     renderStudentSidebar(d.races);
   } catch(e) {}
@@ -883,7 +971,7 @@ function renderStudentSidebar(races) {
           <span>${esc(r.race_name)}</span>
           <span style="color:${done?'var(--green)':'var(--muted)'}">${done?'✓':'—'}</span>
         </div>
-        <div style="font-size:9px;color:var(--muted)">${r.unique_voters} voter${r.unique_voters!==1?'s':''} participated</div>
+        <div style="font-size:9px;color:var(--muted)">${r.unique_voters} voter${r.unique_voters!==1?'s':''} participated · ${r.voter_percentage != null ? r.voter_percentage.toFixed(2) : '0.00'}%</div>
       </div>`;
     }).join('')}`;
 }
