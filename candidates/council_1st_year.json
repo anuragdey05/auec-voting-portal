@@ -1,0 +1,179 @@
+{
+  "race_id": "council_1st_year",
+  "race_name": "1st Year Student Council",
+  "eligible_suffixes": ["_ug2026"],
+  "max_votes": 4,
+  "nota_ref_id": 999,
+  "candidates": [
+    {
+      "id": 13,
+      "name": "Zara Javed",
+      "affiliation": "Independent",
+      "year": "UG2026",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "ZJ",
+      "is_nota": false
+    },
+    {
+      "id": 14,
+      "name": "Gurjas Singh Chadha",
+      "affiliation": "Independent",
+      "year": "UG2026",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "GSC",
+      "is_nota": false
+    },
+    {
+      "id": 15,
+      "name": "Harsh Ravi Nagdev",
+      "affiliation": "Independent",
+      "year": "UG2026",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "HRN",
+      "is_nota": false
+    },
+    {
+      "id": 16,
+      "name": "Hargun Singh",
+      "affiliation": "Independent",
+      "year": "UG2026",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "HS",
+      "is_nota": false
+    },
+    {
+      "id": 17,
+      "name": "Sohraab Singh",
+      "affiliation": "United Ashoka",
+      "year": "UG2026",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "SS",
+      "is_nota": false
+    },
+    {
+      "id": 18,
+      "name": "S S Rithu",
+      "affiliation": "Independent",
+      "year": "UG2026",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "SSR",
+      "is_nota": false
+    },
+    {
+      "id": 19,
+      "name": "Siddhi Shiva Prakash",
+      "affiliation": "Independent",
+      "year": "UG2026",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "SSP",
+      "is_nota": false
+    },
+    {
+      "id": 20,
+      "name": "Muskan",
+      "affiliation": "United Students' Front",
+      "year": "UG2026",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "M",
+      "is_nota": false
+    },
+    {
+      "id": 21,
+      "name": "Akshay Tulpule",
+      "affiliation": "Independent",
+      "year": "UG2026",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "AT",
+      "is_nota": false
+    },
+    {
+      "id": 22,
+      "name": "Pranav Chandrashekar",
+      "affiliation": "Independent",
+      "year": "UG2026",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "PC",
+      "is_nota": false
+    },
+    {
+      "id": 23,
+      "name": "Shreevats Shukla",
+      "affiliation": "United Students' Front",
+      "year": "UG2026",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "SS",
+      "is_nota": false
+    },
+    {
+      "id": 24,
+      "name": "Lakshmi Sarayu Adepu",
+      "affiliation": "United Ashoka",
+      "year": "UG2026",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "LSA",
+      "is_nota": false
+    },
+    {
+      "id": 25,
+      "name": "Kavyaa Turakhia",
+      "affiliation": "Independent",
+      "year": "UG2026",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "KT",
+      "is_nota": false
+    },
+    {
+      "id": 26,
+      "name": "Manya Varma",
+      "affiliation": "Independent",
+      "year": "UG2026",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "MV",
+      "is_nota": false
+    },
+    {
+      "id": 27,
+      "name": "Nilesh Mandhyan",
+      "affiliation": "Independent",
+      "year": "UG2026",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "NM",
+      "is_nota": false
+    },
+    {
+      "id": 28,
+      "name": "Manicka Kumar",
+      "affiliation": "Independent",
+      "year": "UG2026",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "MK",
+      "is_nota": false
+    },
+    {
+      "id": 999,
+      "name": "None of the Above",
+      "affiliation": "",
+      "year": "",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "—",
+      "is_nota": true
+    }
+  ]
+}

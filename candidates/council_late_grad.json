@@ -1,0 +1,29 @@
+{
+  "race_id": "council_late_grad",
+  "race_name": "Late Graduate Student Council",
+  "eligible_suffixes": ["_ug25"],
+  "max_votes": 1,
+  "nota_ref_id": 999,
+  "candidates": [
+    {
+      "id": 32,
+      "name": "Aan Rajyavardhan Rakshit",
+      "affiliation": "Horizon",
+      "year": "UG25",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "ARR",
+      "is_nota": false
+    },
+    {
+      "id": 999,
+      "name": "None of the Above",
+      "affiliation": "",
+      "year": "",
+      "manifesto_url": "",
+      "bio": "",
+      "photo_initials": "—",
+      "is_nota": true
+    }
+  ]
+}
