@@ -318,19 +318,6 @@ let sessionReceipts = []; // [{race_id, race_name, receipt}]
 // Per-race selections: { race_id: { ref_ids: Set, nota: bool } }
 const ballots = {};
 
-<<<<<<< HEAD
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  }[ch]));
-}
-
-// ── Boot ──────────────────────────────────────────────────────────────────────
-=======
 // ── HTML Sanitization ────────────────────────────────────────────────────────
 function esc(str) {
   if (str === null || str === undefined) return '';
@@ -357,7 +344,6 @@ function serverNow() {
 }
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
->>>>>>> origin/main
 async function boot() {
   // Fetch election status (or use server-injected initial)
   await fetchElectionStatus();
@@ -546,11 +532,7 @@ function renderHeader() {
   el.innerHTML = `
     ${statusPill}
     <span class="role-badge ${isAdmin ? 'admin' : ''}">${isAdmin ? 'AUEC Admin' : 'Student'}</span>
-<<<<<<< HEAD
-    <span style="font-size:10px;color:var(--muted)">${escapeHtml(voterData.email)}</span>
-=======
     <span style="font-size:10px;color:var(--muted)">${esc(voterData.email)}</span>
->>>>>>> origin/main
     <a href="/logout/" class="hbtn">Sign out</a>`;
 }
 
@@ -599,7 +581,7 @@ async function loadRaces() {
   try {
     const r = await fetch('/api/races/', {credentials:'include'});
     const d = await r.json();
-    if (!d.ok) { el.innerHTML = `<div class="alert alert-error show">${escapeHtml(d.error)}</div>`; return; }
+    if (!d.ok) { el.innerHTML = `<div class="alert alert-error show">${esc(d.error)}</div>`; return; }
     renderRaces(d.races);
   } catch(e) { el.innerHTML = `<div style="font-size:11px;color:var(--rust)">Failed to load races.</div>`; }
 }
@@ -612,7 +594,7 @@ function renderRaces(races) {
     const maxVotes = Number(race.max_votes) || 1;
     const uniqueVoters = Number(race.unique_voters) || 0;
     const raceIdEncoded = encodeURIComponent(String(race.race_id));
-    const raceName = escapeHtml(race.race_name);
+    const raceName = esc(race.race_name);
     const isMulti   = maxVotes > 1;
     const hintText  = isMulti
       ? `Select <strong>1 to ${maxVotes}</strong> candidates, or choose NOTA`
@@ -655,10 +637,10 @@ function candidateCardHTML(race, c, voted) {
   const onclick = voted ? '' : `onclick="toggleCandidate(decodeURIComponent('${raceIdEncoded}'),${refId},false)"`;
 
   const aff = (c.affiliation || '').trim().toLowerCase();
-  const initials = escapeHtml(c.photo_initials || (c.name ? c.name[0] : ''));
-  const name = escapeHtml(c.name);
-  const affiliation = escapeHtml(c.affiliation);
-  const bio = escapeHtml(c.bio);
+  const initials = esc(c.photo_initials || (c.name ? c.name[0] : ''));
+  const name = esc(c.name);
+  const affiliation = esc(c.affiliation);
+  const bio = esc(c.bio);
 
   let stripClass = '';
   if (
@@ -672,19 +654,11 @@ function candidateCardHTML(race, c, voted) {
   return `
     <div class="cand-card ${dis} ${!stripClass ? 'no-party' : ''}" id="cand-${raceIdEncoded}-${refId}" ${onclick}>
       <div class="cand-card-main">
-<<<<<<< HEAD
         <div class="cand-init">${initials}</div>
         <div>
           <div class="cand-name">${name}</div>
           <div class="cand-affil">${affiliation}</div>
           <div class="cand-bio">${bio}</div>
-=======
-        <div class="cand-init">${esc(c.photo_initials || c.name[0])}</div>
-        <div>
-          <div class="cand-name">${esc(c.name)}</div>
-          <div class="cand-affil">${esc(c.affiliation)}</div>
-          <div class="cand-bio">${esc(c.bio)}</div>
->>>>>>> origin/main
         </div>
       </div>
       <div class="cand-party-strip ${stripClass}"></div>
@@ -694,25 +668,17 @@ function candidateCardHTML(race, c, voted) {
 function notaCardHTML(race, nota, voted) {
   const raceIdEncoded = encodeURIComponent(String(race.race_id));
   const refId = Number(nota.candidate_ref_id) || 0;
-  const bio = escapeHtml(nota.bio);
+  const bio = esc(nota.bio);
   const dis = voted ? 'disabled-card' : '';
   const onclick = voted ? '' : `onclick="toggleCandidate(decodeURIComponent('${raceIdEncoded}'),${refId},true)"`;
   return `
-<<<<<<< HEAD
     <div class="cand-card nota-card ${dis}" id="cand-${raceIdEncoded}-${refId}" ${onclick}>
-      <div class="cand-init">N/A</div>
-      <div>
-        <div class="cand-name">None of the Above (NOTA)</div>
-        <div class="cand-bio">${bio}</div>
-=======
-    <div class="cand-card nota-card ${dis}" id="cand-${race.race_id}-${nota.candidate_ref_id}" ${onclick}>
       <div class="cand-card-main">
         <div class="cand-init">N/A</div>
         <div>
           <div class="cand-name">None of the Above (NOTA)</div>
-          <div class="cand-bio">${esc(nota.bio)}</div>
+          <div class="cand-bio">${bio}</div>
         </div>
->>>>>>> origin/main
       </div>
     </div>`;
 }
@@ -852,13 +818,8 @@ function renderReceipts() {
   document.getElementById('receipts-container').innerHTML = sessionReceipts.map(r => `
     <div class="receipt-box">
       <div class="receipt-stamp">VOTED</div>
-<<<<<<< HEAD
-      <div class="receipt-race">${escapeHtml(r.race_name)}${r.is_nota ? ' · NOTA' : ` · ${r.selections} selection${r.selections!==1?'s':''}`}</div>
-      <div class="receipt-hash">${escapeHtml(r.receipt)}</div>
-=======
       <div class="receipt-race">${esc(r.race_name)}${r.is_nota ? ' · NOTA' : ` · ${r.selections} selection${r.selections!==1?'s':''}`}</div>
       <div class="receipt-hash">${esc(r.receipt)}</div>
->>>>>>> origin/main
       <div class="receipt-note">Use this hash in the Verify tab to confirm it appears in the ledger.</div>
     </div>`).join('');
 }
@@ -919,7 +880,7 @@ function renderStudentSidebar(races) {
       return `
       <div style="padding:9px 0;border-bottom:1px solid var(--border)">
         <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
-          <span>${escapeHtml(r.race_name)}</span>
+          <span>${esc(r.race_name)}</span>
           <span style="color:${done?'var(--green)':'var(--muted)'}">${done?'✓':'—'}</span>
         </div>
         <div style="font-size:9px;color:var(--muted)">${r.unique_voters} voter${r.unique_voters!==1?'s':''} participated</div>
@@ -939,11 +900,11 @@ async function loadAdminSidebar() {
       d.results.map(race => {
         const raceTotal = race.candidates.reduce((s,c)=>s+c.votes,0);
         return `<div class="race-group">
-          <div class="rg-title">${escapeHtml(race.race_name)}</div>
+          <div class="rg-title">${esc(race.race_name)}</div>
           <div class="rg-voters">${race.unique_voters} voter${race.unique_voters!==1?'s':''} participated</div>
           ${race.candidates.map((c,i)=>`
             <div class="result-row">
-              <div class="result-name"><span>${c.is_nota?'NOTA':escapeHtml(c.name)}</span><span class="result-count">${c.votes} · ${raceTotal?Math.round(c.votes/raceTotal*100):0}%</span></div>
+              <div class="result-name"><span>${c.is_nota?'NOTA':esc(c.name)}</span><span class="result-count">${c.votes} · ${raceTotal?Math.round(c.votes/raceTotal*100):0}%</span></div>
               <div class="bar-track"><div class="bar-fill ${c.is_nota?'nota':COLORS[i%3]}" style="width:${raceTotal?c.votes/raceTotal*100:0}%"></div></div>
             </div>`).join('')}
           <div class="total-line"><span>Ballots cast</span><span>${raceTotal}</span></div>
@@ -957,7 +918,7 @@ async function loadAdminResults() {
   try {
     const r = await fetch('/api/results/',{credentials:'include'});
     const d = await r.json();
-    if (!d.ok) { document.getElementById('admin-results').innerHTML=`<div class="alert alert-error show">${escapeHtml(d.error)}</div>`; return; }
+    if (!d.ok) { document.getElementById('admin-results').innerHTML=`<div class="alert alert-error show">${esc(d.error)}</div>`; return; }
     const totalVotes = d.results.reduce((s,race)=>s+race.candidates.reduce((a,c)=>a+c.votes,0),0);
     const totalVoters = d.results.reduce((s,race)=>Math.max(s,race.unique_voters),0);
     document.getElementById('admin-stats').innerHTML = `
@@ -971,17 +932,17 @@ async function loadAdminResults() {
       const raceTotal = race.candidates.reduce((s,c)=>s+c.votes,0);
       return `<div style="margin-bottom:32px;max-width:600px">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px">
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">${escapeHtml(race.race_name)}</div>
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">${esc(race.race_name)}</div>
           <div style="font-size:10px;color:var(--muted)">${race.unique_voters} voter${race.unique_voters!==1?'s':''} participated</div>
         </div>
         ${race.candidates.map((c,i)=>`
           <div style="margin-bottom:12px">
             <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:13px">
-              <span style="font-family:'Playfair Display',serif;${c.is_nota?'color:var(--muted)':''}">${c.is_nota?'None of the Above (NOTA)':escapeHtml(c.name)}</span>
+              <span style="font-family:'Playfair Display',serif;${c.is_nota?'color:var(--muted)':''}">${c.is_nota?'None of the Above (NOTA)':esc(c.name)}</span>
               <span style="color:var(--muted);font-size:10px">${c.votes} · ${raceTotal?Math.round(c.votes/raceTotal*100):0}%</span>
             </div>
             <div class="bar-track" style="height:7px"><div class="bar-fill ${c.is_nota?'nota':COLORS[i%3]}" style="width:${raceTotal?c.votes/raceTotal*100:0}%; height:7px"></div></div>
-            ${!c.is_nota?`<div style="font-size:9px;color:var(--muted);margin-top:2px">${escapeHtml(c.affiliation)}</div>`:''}
+            ${!c.is_nota?`<div style="font-size:9px;color:var(--muted);margin-top:2px">${esc(c.affiliation)}</div>`:''}
           </div>`).join('')}
         <div style="font-size:10px;color:var(--muted);border-top:1px solid var(--border);padding-top:8px">Total ballots: ${raceTotal}</div>
       </div>`;
