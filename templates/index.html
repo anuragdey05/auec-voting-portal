@@ -102,6 +102,7 @@ input:focus{border-color:var(--ink)}
 }
 .cand-party-strip.red{background:#ae0000}
 .cand-party-strip.blue{background:#75ADBE}
+.cand-party-strip.yellow{background:#E6AC00}
 
 .cand-card.no-party{grid-template-columns:1fr}
 .cand-card.no-party .cand-party-strip{display:none}
@@ -644,11 +645,13 @@ function candidateCardHTML(race, c, voted) {
 
   let stripClass = '';
   if (
-    aff.includes("united students' front") 
+    aff.includes("united students' front") || aff.includes("united students’ front")
   ) {
     stripClass = 'red';
   } else if (aff.includes('horizon')) {
     stripClass = 'blue';
+  } else if (aff.includes('united ashoka')) {
+    stripClass = 'yellow';
   }
 
   return `
