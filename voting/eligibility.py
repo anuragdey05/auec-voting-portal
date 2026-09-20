@@ -36,18 +36,6 @@ SUFFIX_RACE_MAP: list[tuple[str, list[str]]] = [
     ("_yif26@ashoka.edu.in",  ["president", "gensec", "council_yif"]),
     ("_yif27@ashoka.edu.in",  ["president", "gensec", "council_yif"]),
 
-    ("parananda.majumdar_ug23@ashoka.edu.in", ["president", "gensec"]),
-    ("mayank.singh_ug23@ashoka.edu.in", ["president", "gensec"]),
-    ("pratham.singh_ug23@ashoka.edu.in", ["president", "gensec"]),
-    ("domil.johnson_ug25@ashoka.edu.in", ["president", "gensec"]),
-    ("smera.agarwal_ug24@ashoka.edu.in", ["president", "gensec"]),
-    ("abhinav.joshi_ug24@ashoka.edu.in", ["president", "gensec"]),
-    ("sanjana.jijo_ug24@ashoka.edu.in", ["president", "gensec"]),
-    ("jaziya.saleem_ug24@ashoka.edu.in", ["president", "gensec"]),
-    ("yashpal.n_ug24@ashoka.edu.in", ["president", "gensec"]),
-    ("aryendu.pande_ug24@ashoka.edu.in", ["president", "gensec"]),
-    ("harshit.chhabra_ug24@ashoka.edu.in", ["president", "gensec"]),
-    ("rutupurnadebalina.naik_ug24@ashoka.edu.in", ["president", "gensec"]),
 ]
 
 CANDIDATE_FILES = [
