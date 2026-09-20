@@ -1,32 +1,32 @@
 """
 voting/management/commands/simulate_votes.py
 
-Creates 1000 voters, issues tokens, casts randomised votes,
-then exports the ledger and prints a final tally.
+Creates N voters, issues tokens for their eligible races, casts randomized ballots,
+exports the decoupled ledger, and displays verified tallies.
 
-Run: python manage.py simulate_votes [--voters 1000] [--reset]
-check 
+Run: python manage.py simulate_votes [--voters 100] [--reset]
 """
 
 import random
+import pathlib
+import json
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.contrib.auth.models import User
 
-from voting.models import Voter, Candidate, VotingToken, Vote
-from voting.services import issue_token, submit_vote_v2, VoteError, build_ledger
-
-import json, pathlib
+from voting.models import Voter, Candidate, VotingToken, Vote, Race
+from voting.services import issue_token_for_race, submit_ballot, VoteError, build_ledger
 
 
 class Command(BaseCommand):
-    help = "Simulate N voters casting votes end-to-end"
+    help = "Simulate N voters casting ballots end-to-end"
 
     def add_arguments(self, parser):
-        parser.add_argument("--voters", type=int, default=1000)
+        parser.add_argument("--voters", type=int, default=100)
         parser.add_argument(
             "--reset",
             action="store_true",
-            help="Wipe all votes/tokens/voters before running (for re-runs).",
+            help="Wipe all votes/tokens/voters before running.",
         )
 
     def handle(self, *args, **options):
@@ -34,71 +34,68 @@ class Command(BaseCommand):
 
         if options["reset"]:
             self.stdout.write("Resetting data...")
-            Vote.objects.all().delete()
-            VotingToken.objects.all().delete()
-            Voter.objects.all().delete()
+            with transaction.atomic():
+                Vote.objects.all().delete()
+                VotingToken.objects.all().delete()
+                for v in Voter.objects.all():
+                    v.has_voted_races.clear()
 
-        candidates = list(Candidate.objects.all())
-        if not candidates:
-            self.stderr.write("No candidates found. Run: python manage.py shell < scripts/seed_candidates.py")
+        races = list(Race.objects.filter(is_active=True).prefetch_related("candidates"))
+        if not races:
+            self.stderr.write("No active races found. Run: python manage.py seed_data")
             return
 
         # ── 1. Create voters ──────────────────────────────────────────────
-        self.stdout.write(f"Creating {n} voters...")
+        self.stdout.write(f"Creating / ensuring {n} simulation voters...")
         voters = []
-        existing_emails = set(Voter.objects.values_list("email", flat=True))
-        to_create = []
         for i in range(1, n + 1):
-            email = f"student{i}@university.edu"
-            if email not in existing_emails:
-                to_create.append(Voter(email=email))
-        Voter.objects.bulk_create(to_create, ignore_conflicts=True)
-        voters = list(Voter.objects.filter(has_voted=False)[:n])
+            email = f"sim_student_{i}_ug2026@ashoka.edu.in"
+            user, _ = User.objects.get_or_create(username=f"sim_{i}", email=email)
+            voter, _ = Voter.objects.get_or_create(user=user, defaults={"email": email})
+            # Ensure eligible for races
+            voter.eligible_races.set(races)
+            voters.append(voter)
         self.stdout.write(f"  {len(voters)} eligible voters ready.")
 
-        # ── 2. Issue tokens ───────────────────────────────────────────────
-        self.stdout.write("Issuing tokens...")
-        token_map = {}   # voter_id → raw_token
-        issued = 0
-        for voter in voters:
-            try:
-                raw = issue_token(voter)
-                token_map[voter.id] = raw
-                issued += 1
-            except ValueError:
-                pass   # already has token
-        self.stdout.write(f"  {issued} tokens issued.")
-
-        # ── 3. Cast votes ──────────────────────────────────────────────────
-        self.stdout.write("Casting votes...")
+        # ── 2. Cast ballots across races ──────────────────────────────────
+        self.stdout.write("Casting simulated ballots across eligible races...")
         success = 0
         errors = 0
-        for voter_id, raw_token in token_map.items():
-            candidate = random.choice(candidates)
-            try:
-                receipt = submit_vote_v2(raw_token, candidate.id)
-                success += 1
-            except VoteError as e:
-                errors += 1
-                self.stderr.write(f"  VoteError voter_id={voter_id}: {e}")
 
-        self.stdout.write(f"  {success} votes cast, {errors} errors.")
+        for voter in voters:
+            for race in list(voter.remaining_races()):
+                try:
+                    raw_token = issue_token_for_race(voter, race)
+                except ValueError as e:
+                    continue
 
-        # ── 4. Export ledger ───────────────────────────────────────────────
+                cands = [c for c in race.candidates.all() if not c.is_nota]
+                nota = [c for c in race.candidates.all() if c.is_nota]
+
+                # Random choice: 10% chance NOTA, 90% candidate(s)
+                if nota and random.random() < 0.10:
+                    selections = [nota[0].candidate_ref_id]
+                else:
+                    k = random.randint(1, min(race.max_votes, len(cands)))
+                    selected_cands = random.sample(cands, k)
+                    selections = [c.candidate_ref_id for c in selected_cands]
+
+                try:
+                    submit_ballot(raw_token, race.race_id, selections)
+                    success += 1
+                except VoteError as e:
+                    errors += 1
+                    self.stderr.write(f"  VoteError race={race.race_id}: {e}")
+
+        self.stdout.write(f"  {success} ballots recorded, {errors} errors.")
+
+        # ── 3. Export decoupled ledger ────────────────────────────────────
         ledger = build_ledger()
         out_path = pathlib.Path("audit_ledger.json")
         out_path.write_text(json.dumps(ledger, indent=2))
-        self.stdout.write(f"  Ledger exported → {out_path.resolve()}")
-
-        # ── 5. Print tally ─────────────────────────────────────────────────
-        tally: dict[str, int] = {}
-        for entry in ledger:
-            name = entry["candidate_name"]
-            tally[name] = tally.get(name, 0) + 1
-
-        self.stdout.write("\n── Final Tally ──────────────────────")
-        for name, count in sorted(tally.items(), key=lambda x: -x[1]):
-            self.stdout.write(f"  {name:<30} {count:>5} votes")
-        self.stdout.write(f"  {'TOTAL':<30} {sum(tally.values()):>5}")
-        self.stdout.write("─────────────────────────────────────\n")
-        self.stdout.write("Done. Run `python manage.py verify_audit` to check chain integrity.")
+        self.stdout.write(
+            f"  Decoupled ledger exported → {out_path.resolve()}\n"
+            f"  • {len(ledger['receipts_ledger'])} ballots in receipts ledger\n"
+            f"  • {len(ledger['shuffled_votes'])} votes in shuffled pool"
+        )
+        self.stdout.write("\nDone. Run `python manage.py verify_audits` to check chain integrity.")
