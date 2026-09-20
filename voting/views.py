@@ -206,7 +206,8 @@ def results_view(request):
 def ledger_view(request):
     race_id = request.GET.get("race_id")
     ledger  = build_ledger(race_id or None)
-    return _ok({"ledger": ledger, "count": len(ledger)})
+    ballots_count = len(ledger.get("receipts_ledger", []))
+    return _ok({"ledger": ledger, "count": ballots_count})
 
 # ── API: quorum tracker (any authenticated voter) ─────────────────────────────
 

@@ -34,8 +34,8 @@ def _get_previous_hash(race: Race) -> str:
     return last.hash_chain if last else "GENESIS"
 
 
-def compute_hash_chain(token_hash, candidate_ref_id, race_id, timestamp_iso, prev_hash):
-    payload = f"{token_hash}|{candidate_ref_id}|{race_id}|{timestamp_iso}|{prev_hash}"
+def compute_hash_chain(receipt: str, race_id: str, timestamp_iso: str, prev_hash: str) -> str:
+    payload = f"{receipt}|{race_id}|{timestamp_iso}|{prev_hash}"
     return sha256(payload)
 
 
@@ -149,13 +149,15 @@ def submit_ballot(raw_token: str, race_id: str, candidate_ref_ids: list[int]) ->
         voter_id = token.voter_id   # capture before null
         now      = timezone.now()
 
+        # ── Compute ballot receipt and atomic hash chain ──────────────────
+        receipt    = compute_receipt(token_hash, race_id, candidate_ref_ids)
+        prev_hash  = _get_previous_hash(race)
+        chain_hash = compute_hash_chain(
+            receipt, race.race_id, now.isoformat(), prev_hash
+        )
+
         # ── Insert one Vote row per candidate ─────────────────────────────
         for candidate in candidates:
-            prev_hash  = _get_previous_hash(race)
-            chain_hash = compute_hash_chain(
-                token_hash, candidate.candidate_ref_id,
-                race.race_id, now.isoformat(), prev_hash,
-            )
             try:
                 Vote.objects.create(
                     token_hash=token_hash,
@@ -238,24 +240,69 @@ def get_results(race_id: str | None = None):
 
 # ── Ledger + receipt ───────────────────────────────────────────────────────────
 
-def build_ledger(race_id: str | None = None) -> list[dict]:
-    qs = Vote.objects.select_related("candidate", "race").order_by("id")
+def build_ledger(race_id: str | None = None) -> dict:
+    """
+    Constructs a decoupled public audit ledger.
+    Separates verifiable proof-of-inclusion receipts from candidate votes:
+      - receipts_ledger: Chronological list of cast ballots with receipts and
+        tamper-evident hash chains. Contains NO candidate names or token hashes.
+      - shuffled_votes: Anonymized cast votes, cryptographically shuffled with
+        SystemRandom. Contains NO receipts, timestamps, or token hashes.
+      - tallies: Official vote counts per candidate per race.
+    """
+    import secrets
+
+    vote_qs = Vote.objects.select_related("candidate", "race").order_by("id")
     if race_id:
-        qs = qs.filter(race__race_id=race_id)
-    entries = []
-    for vote in qs:
-        entries.append({
-            "vote_id":           vote.id,
-            "race_id":           vote.race.race_id,
-            "race_name":         vote.race.race_name,
-            "candidate_ref_id":  vote.candidate.candidate_ref_id,
-            "candidate_name":    vote.candidate.name,
-            "is_nota":           vote.is_nota,
-            "token_hash":        vote.token_hash,
-            "timestamp":         vote.timestamp.isoformat(),
-            "hash_chain":        vote.hash_chain,
+        vote_qs = vote_qs.filter(race__race_id=race_id)
+
+    # Group votes into distinct ballots: (token_hash, race_id) -> list of votes
+    ballots = defaultdict(list)
+    for v in vote_qs:
+        ballots[(v.token_hash, v.race.race_id)].append(v)
+
+    receipts_ledger = []
+    ballot_id = 1
+    for (th, rid), v_list in ballots.items():
+        first_vote = v_list[0]
+        c_ref_ids = [v.candidate.candidate_ref_id for v in v_list]
+        rec = compute_receipt(th, rid, c_ref_ids)
+        receipts_ledger.append({
+            "ballot_id":  ballot_id,
+            "race_id":    rid,
+            "race_name":  first_vote.race.race_name,
+            "receipt":    rec,
+            "timestamp":  first_vote.timestamp.isoformat(),
+            "hash_chain": first_vote.hash_chain,
         })
-    return entries
+        ballot_id += 1
+
+    # Shuffled votes (strictly decoupled from receipts & timestamps)
+    shuffled_votes = []
+    for v in vote_qs:
+        shuffled_votes.append({
+            "race_id":          v.race.race_id,
+            "race_name":        v.race.race_name,
+            "candidate_ref_id": v.candidate.candidate_ref_id,
+            "candidate_name":   v.candidate.name,
+            "is_nota":          v.is_nota,
+        })
+    # Cryptographically secure random shuffle
+    secrets.SystemRandom().shuffle(shuffled_votes)
+
+    tallies = get_results(race_id)
+
+    return {
+        "metadata": {
+            "title": "AUEC Student Elections Decoupled Audit Ledger",
+            "exported_at": timezone.now().isoformat(),
+            "total_ballots": len(receipts_ledger),
+            "total_votes": len(shuffled_votes),
+        },
+        "receipts_ledger": receipts_ledger,
+        "shuffled_votes": shuffled_votes,
+        "tallies": tallies,
+    }
 
 
 def verify_receipt(receipt_hash: str) -> bool:

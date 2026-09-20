@@ -14,7 +14,7 @@ from voting.services import build_ledger
 
 
 class Command(BaseCommand):
-    help = "Export the audit ledger to a JSON file."
+    help = "Export the decoupled audit ledger to a JSON file."
 
     def add_arguments(self, parser):
         parser.add_argument("--output", default="audit_ledger.json")
@@ -23,4 +23,10 @@ class Command(BaseCommand):
         ledger = build_ledger()
         out_path = pathlib.Path(options["output"])
         out_path.write_text(json.dumps(ledger, indent=2))
-        self.stdout.write(f"Exported {len(ledger)} votes → {out_path.resolve()}")
+        num_ballots = len(ledger.get("receipts_ledger", []))
+        num_votes   = len(ledger.get("shuffled_votes", []))
+        self.stdout.write(
+            f"Exported decoupled audit ledger → {out_path.resolve()}\n"
+            f"  • {num_ballots} ballots in receipts ledger (proof of inclusion)\n"
+            f"  • {num_votes} votes in shuffled pool (anonymized tallies)"
+        )
