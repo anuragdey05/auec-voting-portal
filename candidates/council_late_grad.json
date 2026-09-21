@@ -1,7 +1,7 @@
 {
   "race_id": "council_late_grad",
   "race_name": "Late Graduate Student Council",
-  "eligible_suffixes": ["_ug25"],
+  "eligible_suffixes": ["_ug23", "_ug24", "_ug25", "_asp25", "_asp26", "_asp27"],
   "max_votes": 1,
   "nota_ref_id": 999,
   "candidates": [

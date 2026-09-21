@@ -26,6 +26,9 @@ urlpatterns = [
     path("health/", lambda r: JsonResponse({"ok": True}), name="health"), # for railway deployment
 
     path("",                         views.index_view,          name="index"),
+    path("vote/",                    views.index_view,          name="vote_page"),
+    path("candidates/",              views.candidates_view,     name="candidates"),
+    path("candidates.html",          views.candidates_view,     name="candidates_html"),
     path("logout/",                  views.logout_view,         name="logout"),
     path("auth/error/",              views.auth_error_view,     name="auth_error"),
     path("auth/",                    include(social_patterns, namespace="social")),
