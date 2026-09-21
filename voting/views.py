@@ -44,6 +44,9 @@ def index_view(request):
     election = json.dumps(get_election_status())
     return render(request, "index.html", {"voter": voter, "election": election})
 
+def candidates_view(request):
+    return render(request, "candidates.html")
+
 def auth_error_view(request):
     reason = request.GET.get("message", "Authentication failed.")
     return render(request, "auth_error.html", {"reason": reason})
