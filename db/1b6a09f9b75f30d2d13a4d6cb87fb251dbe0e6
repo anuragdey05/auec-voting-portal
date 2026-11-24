@@ -1,0 +1,20 @@
+README.md
+  s_ebde4e43a8a1d0::t_15eaba460b19c5 1-14,17-276
+  s_ebde4e43a8a1d0::t_aa299eb71bc581 15-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db1b6a09f9b75f30d2d13a4d6cb87fb251dbe0e6",
+  "prompts": {},
+  "sessions": {
+    "s_ebde4e43a8a1d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "93bb2bc2-61cc-45e6-81f9-ba39adb45613",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Anurag Dey <anuragdey2k@gmail.com>"
+    }
+  }
+}
